@@ -1,0 +1,9 @@
+{
+  "name": "OpenDeskCast Viewer",
+  "short_name": "OpenDeskCast",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}

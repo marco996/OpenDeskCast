@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/x-icon" href="/static/icon.ico" />
+  <title>OpenDeskCast</title>
+  <link rel="stylesheet" href="/static/style.css?v=8" />
+</head>
+<body class="fluent-body">
+  <div class="fluent-shell">
+    <!-- Barra Superiore Compatta -->
+    <header class="fluent-header">
+      <div class="fluent-title-group">
+        <span class="fluent-dot" id="status-dot"></span>
+        <span class="fluent-title">OpenDeskCast</span>
+      </div>
+      <div class="fluent-header-right">
+        <button id="btn-help" class="fluent-help-btn" type="button">Setup dispositivo</button>
+        <select id="sel-lang" class="fluent-lang-select" title="Lingua / Language"></select>
+        <div class="fluent-pill" id="viewers-badge">0 spettatori collegati</div>
+      </div>
+    </header>
+
+    <!-- Layout Principale a 2 Colonne Fisse (Zero Scroll) -->
+    <main class="fluent-main">
+      <!-- Colonna Sinistra: QR Code, PIN 4 cifre & opendeskcast.local -->
+      <section class="fluent-card fluent-qr-card">
+        <div class="card-label" id="lbl-qr-title">QR Sicurezza Sessione</div>
+        <div class="qr-frame">
+          <img id="qr-image" alt="QR Code" src="" />
+        </div>
+        <div class="pin-badge" id="pin-badge">PIN: ----</div>
+        <div class="ip-box" id="primary-url" title="Click per copiare">
+          http://127.0.0.1:8765
+        </div>
+        <button id="btn-rotate-token" class="fluent-mini-btn">
+          Rigenera QR / Disconnetti
+        </button>
+      </section>
+
+      <!-- Colonna Destra: Controlli Windows 11 Fluent -->
+      <section class="fluent-card fluent-controls-card">
+        <!-- Riga 1: Sorgente -->
+        <div class="control-group-full">
+          <div class="field-header">
+            <label for="sel-monitor" id="lbl-source">Sorgente</label>
+            <button id="btn-refresh" class="icon-btn" title="Refresh">↻</button>
+          </div>
+          <select id="sel-monitor" class="fluent-select"></select>
+        </div>
+
+        <!-- Riga 2: FPS, Qualità, Scala -->
+        <div class="control-row-3">
+          <div class="control-col">
+            <label for="sel-fps" id="lbl-fps">Fluidità</label>
+            <select id="sel-fps" class="fluent-select">
+              <option value="15">15 FPS</option>
+              <option value="30" selected>30 FPS</option>
+              <option value="45">45 FPS</option>
+              <option value="60">60 FPS</option>
+            </select>
+          </div>
+          <div class="control-col">
+            <label for="sel-quality" id="lbl-quality">Qualità</label>
+            <select id="sel-quality" class="fluent-select">
+              <option value="50">50%</option>
+              <option value="60">60%</option>
+              <option value="80" selected>80%</option>
+              <option value="90">90%</option>
+              <option value="100">100%</option>
+            </select>
+          </div>
+          <div class="control-col">
+            <label for="sel-scale" id="lbl-scale">Risoluzione</label>
+            <select id="sel-scale" class="fluent-select">
+              <option value="0.5">50%</option>
+              <option value="0.6">60%</option>
+              <option value="0.8">80%</option>
+              <option value="0.9">90%</option>
+              <option value="1.0" selected>100%</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="fluent-divider"></div>
+
+        <!-- Riga 3, 4, 5: Switch Moderni Windows 11 -->
+        <div class="switches-stack">
+          <label class="switch-row">
+            <div class="switch-text">
+              <span class="switch-title" id="lbl-cursor">Mostra cursore del mouse</span>
+            </div>
+            <input type="checkbox" id="chk-cursor" checked />
+            <span class="fluent-toggle"></span>
+          </label>
+
+          <label class="switch-row">
+            <div class="switch-text">
+              <span class="switch-title" id="lbl-audio">Trasmetti audio del PC</span>
+            </div>
+            <input type="checkbox" id="chk-audio" />
+            <span class="fluent-toggle"></span>
+          </label>
+
+          <label class="switch-row">
+            <div class="switch-text">
+              <span class="switch-title" id="lbl-lock">Blocca nuovi dispositivi (Rete Pubblica)</span>
+              <span class="switch-sub" id="lbl-lock-sub">Impedisce nuovi collegamenti anche conoscendo l'IP</span>
+            </div>
+            <input type="checkbox" id="chk-lock" />
+            <span class="fluent-toggle"></span>
+          </label>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Finestrella Guida al Collegamento -->
+  <div id="help-modal" class="help-modal-backdrop hidden">
+    <div class="help-modal-card">
+      <div class="help-modal-header">
+        <span class="help-modal-title" id="help-title">Come collegare uno Spettatore</span>
+        <button id="btn-help-close" class="help-modal-close" type="button">OK</button>
+      </div>
+      <div class="help-modal-body" id="help-body"></div>
+    </div>
+  </div>
+
+  <script src="/static/admin.js?v=8"></script>
+</body>
+</html>

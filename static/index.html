@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="icon" type="image/x-icon" href="/static/icon.ico" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <title>OpenDeskCast</title>
+  <link rel="stylesheet" href="/static/style.css?v=10" />
+</head>
+<body class="viewer-body">
+  <div id="viewer-container" class="viewer-container">
+    <canvas id="viewer-canvas"></canvas>
+  </div>
+
+  <!-- 4-Digit PIN Numpad (only shown when opening opendeskcast.local without QR token) -->
+  <div id="pin-overlay" class="pin-overlay hidden">
+    <div class="pin-card">
+      <div class="pin-brand">OpenDeskCast</div>
+      <div class="pin-sub">PIN (4 cifre)</div>
+      <div id="pin-boxes" class="pin-boxes">
+        <div class="pin-digit" id="pin-d0"></div>
+        <div class="pin-digit" id="pin-d1"></div>
+        <div class="pin-digit" id="pin-d2"></div>
+        <div class="pin-digit" id="pin-d3"></div>
+      </div>
+      <div class="pin-pad">
+        <button type="button" class="pin-btn" data-k="1">1</button>
+        <button type="button" class="pin-btn" data-k="2">2</button>
+        <button type="button" class="pin-btn" data-k="3">3</button>
+        <button type="button" class="pin-btn" data-k="4">4</button>
+        <button type="button" class="pin-btn" data-k="5">5</button>
+        <button type="button" class="pin-btn" data-k="6">6</button>
+        <button type="button" class="pin-btn" data-k="7">7</button>
+        <button type="button" class="pin-btn" data-k="8">8</button>
+        <button type="button" class="pin-btn" data-k="9">9</button>
+        <button type="button" class="pin-btn pin-btn-act" data-k="C">C</button>
+        <button type="button" class="pin-btn" data-k="0">0</button>
+        <button type="button" class="pin-btn pin-btn-act" data-k="B">⌫</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/client.js?v=10"></script>
+</body>
+</html>

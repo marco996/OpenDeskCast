@@ -1,0 +1,59 @@
+name: Build & Verify Standalone Packages
+
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_glob: "dist/OpenDeskCast-v*-windows-x64.zip"
+          - os: ubuntu-latest
+            artifact_glob: "dist/OpenDeskCast-v*-linux-x64.tar.gz"
+          - os: macos-latest
+            artifact_glob: "dist/OpenDeskCast-v*-macos.zip"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10 (Build-time only)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Build standalone OS package
+        run: python scripts/build_package.py
+
+      - name: Verify standalone package in clean environment (no Python in PATH)
+        run: python scripts/verify_clean_env.py
+
+      - name: Upload standalone release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenDeskCast-${{ matrix.os }}
+          path: ${{ matrix.artifact_glob }}
+
+      - name: Publish to GitHub Releases on Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact_glob }}
+          generate_release_notes: true
