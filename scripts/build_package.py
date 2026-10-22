@@ -6,6 +6,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 DIST_DIR = ROOT / "dist"
 BUILD_DIR = ROOT / "build"
 
@@ -87,6 +89,8 @@ def build() -> Path:
         "uvicorn",
         "--collect-submodules",
         "websockets",
+        "--collect-submodules",
+        "comtypes",
     ]
 
     if (ROOT / "opendeskcast.ico").is_file() and sys.platform == "win32":

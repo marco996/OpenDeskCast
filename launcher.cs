@@ -535,6 +535,7 @@ namespace OpenDeskCastLauncher
             ctrlCard.Controls.Add(_lblAudio);
 
             _tglAudio = new FluentToggle { Location = new Point(324, 178) };
+            _tglAudio.SetCheckedSilent(true);
             _tglAudio.CheckedChanged += (s, e) => PushSettings();
             ctrlCard.Controls.Add(_tglAudio);
 

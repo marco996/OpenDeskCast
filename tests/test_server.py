@@ -131,3 +131,15 @@ def test_websocket_stream_requires_valid_token():
         data2 = ws.receive_bytes()
         assert len(data2) > 100
         assert data2[8:10] == b"\xff\xd8"
+
+
+def test_websocket_audio_streaming():
+    client = TestClient(app)
+    host_state.lock_new_viewers = False
+    host_state.audio_enabled = True
+    token = host_state.session_token
+
+    with client.websocket_connect(f"/ws/audio?t={token}") as ws:
+        chunk = ws.receive_bytes()
+        assert isinstance(chunk, bytes)
+        assert len(chunk) == 1920

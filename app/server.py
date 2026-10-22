@@ -62,7 +62,7 @@ class HostState:
     quality: int = 80
     scale: float = 1.0
     draw_cursor: bool = True
-    audio_enabled: bool = False
+    audio_enabled: bool = True
     lock_new_viewers: bool = False
     session_token: str = field(default_factory=_new_token)
     session_pin: str = field(default_factory=_new_pin)
@@ -383,21 +383,19 @@ async def ws_audio(ws: WebSocket, t: str | None = Query(default=None)) -> None:
         return
 
     active_audio_ws.add(ws)
+    queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=16)
+    audio_streamer.add_subscriber(queue)
     try:
         while True:
-            if not host_state.audio_enabled:
-                await asyncio.sleep(0.25)
-                continue
-            async for chunk in audio_streamer.stream_pcm_chunks():
-                if not host_state.audio_enabled:
-                    break
+            chunk = await queue.get()
+            if host_state.audio_enabled:
                 await ws.send_bytes(chunk)
-            await asyncio.sleep(0.25)
     except WebSocketDisconnect:
         pass
     except Exception:
         pass
     finally:
+        audio_streamer.remove_subscriber(queue)
         active_audio_ws.discard(ws)
 
 

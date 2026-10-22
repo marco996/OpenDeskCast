@@ -5,6 +5,7 @@
   const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
   const pinOverlay = document.getElementById("pin-overlay");
   const pinBoxes = document.getElementById("pin-boxes");
+  const unmuteBanner = document.getElementById("unmute-banner");
   const digitEls = [
     document.getElementById("pin-d0"),
     document.getElementById("pin-d1"),
@@ -85,6 +86,7 @@
   function wipeToBlackAndLock() {
     sessionTerminated = true;
     sessionToken = "";
+    updateUnmuteBanner(false);
     if (pinOverlay) pinOverlay.classList.add("hidden");
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -96,6 +98,13 @@
       } catch (_) {}
       wsAudio = null;
     }
+    if (audioCtx) {
+      try {
+        audioCtx.close();
+      } catch (_) {}
+      audioCtx = null;
+    }
+    nextAudioTime = 0;
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, canvas.width || 1920, canvas.height || 1080);
   }
@@ -141,6 +150,7 @@
   }
 
   function handlePinKey(key) {
+    ensureAudioUnlocked();
     if (verifyingPin || sessionToken) return;
     if (key === "C") {
       enteredPin = "";
@@ -182,7 +192,55 @@
     }
   });
 
+  function updateUnmuteBanner(show) {
+    if (!unmuteBanner) return;
+    if (show && !sessionTerminated && sessionToken) {
+      unmuteBanner.classList.remove("hidden");
+    } else {
+      unmuteBanner.classList.add("hidden");
+    }
+  }
+
+  function initAudioContext() {
+    if (audioCtx) return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    try {
+      audioCtx = new AudioContextClass({ latencyHint: "interactive" });
+      audioCtx.onstatechange = () => {
+        if (audioCtx && audioCtx.state === "running") {
+          updateUnmuteBanner(false);
+        }
+      };
+      if (audioCtx.state === "running") {
+        updateUnmuteBanner(false);
+      }
+    } catch (_) {}
+  }
+
+  function ensureAudioUnlocked() {
+    initAudioContext();
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume().then(() => {
+        updateUnmuteBanner(false);
+      }).catch(() => {});
+    }
+  }
+
+  if (unmuteBanner) {
+    unmuteBanner.addEventListener("click", (e) => {
+      e.stopPropagation();
+      ensureAudioUnlocked();
+    });
+  }
+
+  window.addEventListener("pointerdown", ensureAudioUnlocked, { passive: true });
+  window.addEventListener("click", ensureAudioUnlocked);
+  window.addEventListener("touchend", ensureAudioUnlocked, { passive: true });
+  window.addEventListener("keydown", ensureAudioUnlocked);
+
   async function requestWakeLockAndFullscreen() {
+    ensureAudioUnlocked();
     if (sessionTerminated || !sessionToken) return;
     try {
       if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
@@ -210,13 +268,16 @@
 
     wsAudio.onmessage = (ev) => {
       if (!(ev.data instanceof ArrayBuffer)) return;
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (!audioCtx && AudioContextClass) {
-        audioCtx = new AudioContextClass({ sampleRate: 44100 });
+      if (!audioCtx) {
+        initAudioContext();
       }
       if (!audioCtx) return;
+
       if (audioCtx.state === "suspended") {
-        audioCtx.resume().catch(() => {});
+        updateUnmuteBanner(true);
+        return;
+      } else {
+        updateUnmuteBanner(false);
       }
 
       const int16 = new Int16Array(ev.data);
@@ -226,7 +287,7 @@
         float32[i] = int16[i] / 32768.0;
       }
 
-      const buf = audioCtx.createBuffer(1, float32.length, 44100);
+      const buf = audioCtx.createBuffer(1, float32.length, 48000);
       buf.getChannelData(0).set(float32);
       const src = audioCtx.createBufferSource();
       src.buffer = buf;
