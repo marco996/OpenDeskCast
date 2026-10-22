@@ -34,31 +34,31 @@ def _clean_subprocess_env() -> dict[str, str]:
 
 def _is_opendeskcast_already_running(port: int) -> bool:
     """Check if an instance of OpenDeskCast is already active on localhost:port."""
-    import urllib.request
+    import socket
     try:
-        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/status?port={port}", method="GET")
-        with urllib.request.urlopen(req, timeout=0.8) as resp:
-            return resp.status == 200
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.3)
+            return s.connect_ex(("127.0.0.1", port)) == 0
     except Exception:
         return False
 
 
 def _open_pc_control_window(port: int) -> None:
-    """Open the PC Control Panel in a standalone app window across Windows, Linux, and macOS."""
+    """Open the PC Control Panel in a dedicated standalone app window across Windows, Linux, and macOS."""
     admin_url = f"http://127.0.0.1:{port}/admin"
     clean_env = _clean_subprocess_env()
 
-    # 1. Try Chrome/Chromium/Edge/Brave in standalone --app window mode
+    # Standalone app candidates
     candidates = [
+        shutil.which("chromium"),
+        shutil.which("chromium-browser"),
+        shutil.which("google-chrome"),
+        shutil.which("chrome"),
+        shutil.which("brave-browser"),
+        shutil.which("microsoft-edge"),
         shutil.which("msedge"),
         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-        shutil.which("chrome"),
-        shutil.which("google-chrome"),
-        shutil.which("chromium"),
-        shutil.which("chromium-browser"),
-        shutil.which("microsoft-edge"),
-        shutil.which("brave-browser"),
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
         "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
@@ -66,14 +66,21 @@ def _open_pc_control_window(port: int) -> None:
     ]
     for exe in candidates:
         if exe and Path(exe).is_file():
+            cmd = [
+                str(exe),
+                f"--app={admin_url}",
+                "--window-size=636,398",
+                "--disable-extensions",
+            ]
+            if sys.platform != "win32":
+                cmd.extend([
+                    "--no-sandbox",
+                    "--disable-gpu-sandbox",
+                    "--user-data-dir=/tmp/opendeskcast-app-profile",
+                ])
             try:
                 subprocess.Popen(
-                    [
-                        str(exe),
-                        f"--app={admin_url}",
-                        "--window-size=636,398",
-                        "--disable-extensions",
-                    ],
+                    cmd,
                     env=clean_env,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
@@ -82,7 +89,20 @@ def _open_pc_control_window(port: int) -> None:
             except Exception:
                 pass
 
-    # 2. On Linux, try xdg-open with clean environment (opens system default browser)
+    # 2. Try firefox with dedicated window
+    if shutil.which("firefox"):
+        try:
+            subprocess.Popen(
+                ["firefox", "--new-window", admin_url],
+                env=clean_env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return
+        except Exception:
+            pass
+
+    # 3. On Linux, try xdg-open with clean environment
     if shutil.which("xdg-open"):
         try:
             subprocess.Popen(
@@ -95,7 +115,7 @@ def _open_pc_control_window(port: int) -> None:
         except Exception:
             pass
 
-    # 3. Fallback to standard Python webbrowser with clean env
+    # 4. Fallback to standard Python webbrowser with clean env
     old_ld = os.environ.get("LD_LIBRARY_PATH")
     try:
         if "LD_LIBRARY_PATH" in os.environ:

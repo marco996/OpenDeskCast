@@ -136,6 +136,10 @@ def build() -> Path:
             shutil.rmtree(root_engine)
         shutil.copytree(target_engine, root_engine)
 
+    shutil.copytree(ROOT / "static", pkg_root / "static", dirs_exist_ok=True)
+    if (ROOT / "VERSION").is_file():
+        shutil.copy2(ROOT / "VERSION", pkg_root / "VERSION")
+
     for doc_file in ("LICENSE", "README.md", "opendeskcast.ico"):
         src_doc = ROOT / doc_file
         if src_doc.is_file():

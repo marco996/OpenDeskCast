@@ -32,13 +32,25 @@ def _resolve_base_dir() -> Path:
 
 
 def _resolve_static_dir() -> Path:
-    return _resolve_base_dir() / "static"
+    candidates = [
+        _resolve_base_dir() / "static",
+        _resolve_base_dir() / "_internal" / "static",
+        Path(__file__).resolve().parent.parent / "static",
+        Path(sys.executable).resolve().parent / "static",
+        Path(sys.executable).resolve().parent / "_internal" / "static",
+    ]
+    for cand in candidates:
+        if cand.is_dir() and (cand / "admin.html").is_file():
+            return cand
+    return candidates[0]
 
 
 def _resolve_version() -> str:
-    vfile = _resolve_base_dir() / "VERSION"
-    if vfile.is_file():
-        return vfile.read_text(encoding="utf-8").strip() or "1.0.0"
+    for base in (_resolve_base_dir(), Path(sys.executable).resolve().parent, Path(__file__).resolve().parent.parent):
+        for sub in ("", "_internal"):
+            vfile = (base / sub / "VERSION") if sub else (base / "VERSION")
+            if vfile.is_file():
+                return vfile.read_text(encoding="utf-8").strip() or "1.0.0"
     return "1.0.0"
 
 
