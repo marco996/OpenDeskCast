@@ -1,5 +1,13 @@
 # OpenDeskCast
 
+> [!IMPORTANT]
+> ### 🚀 Vuoi solo usare OpenDeskCast senza configurare nulla?
+> **Non scaricare il codice sorgente con "Code -> Download ZIP"**!  
+> Scarica direttamente l'applicazione pronta con **doppio clic** (nessun Python o compilatore richiesto):  
+> 👉 **[Scarica l'ultimo pacchetto pronto da GitHub Releases](https://github.com/marco996/OpenDeskCast/releases/latest)**  
+> 
+> *Troverai il file `.zip` autonomo già compilato per Windows (con `OpenDeskCast.exe` e runtime isolato) pronto all'uso.*
+
 **OpenDeskCast** è un software leggero, autonomo e ad altissime prestazioni per trasmettere in tempo reale lo schermo del PC verso qualsiasi dispositivo sulla rete locale (tablet, smartphone, altri computer o smart TV) tramite un comune browser web, senza installare alcuna app sugli spettatori.
 
 **OpenDeskCast** is a lightweight, standalone, ultra-low-latency local screen-casting utility that streams your PC display to any device on your local network (tablets, phones, laptops, smart TVs) over a standard web browser — zero client apps required.
@@ -33,6 +41,12 @@
 4. Collega uno o più spettatori:
    - **Con fotocamera**: inquadra il QR Code.
    - **Senza fotocamera**: clicca su **Setup dispositivo** per le istruzioni, apri nel browser l'indirizzo `http://<IP>:8765` indicato sotto il QR e inserisci il **PIN a 4 cifre**.
+
+### 2. Se hai scaricato il Codice Sorgente (Installazione 1-click per Windows)
+Se hai scaricato l'archivio sorgente (`OpenDeskCast-main.zip`) o clonato la repository:
+1. Fai doppio clic su **`install_windows.bat`**.  
+   *Lo script configurerà tutto automaticamente: compila l'eseguibile, crea l'ambiente isolato, installa le dipendenze e genera il collegamento con icona sul Desktop e nel Menu Start.*
+2. Una volta terminato, avvia il programma dal Desktop oppure con doppio clic su **`start_windows.bat`** (o `OpenDeskCast.exe`).
 
 ---
 

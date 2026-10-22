@@ -17,7 +17,7 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_glob: "dist/OpenDeskCast-v*-windows-x64.zip"
+            artifact_glob: "dist/OpenDeskCast-v*"
           - os: ubuntu-latest
             artifact_glob: "dist/OpenDeskCast-v*-linux-x64.tar.gz"
           - os: macos-latest
@@ -44,6 +44,12 @@ jobs:
 
       - name: Verify standalone package in clean environment (no Python in PATH)
         run: python scripts/verify_clean_env.py
+
+      - name: Build Inno Setup Windows Installer (Windows only)
+        if: runner.os == 'Windows'
+        run: |
+          choco install innosetup --no-progress
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 
       - name: Upload standalone release artifact
         uses: actions/upload-artifact@v4
