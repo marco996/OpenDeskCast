@@ -229,12 +229,19 @@ class AudioDeviceManager:
                         "load-module",
                         "module-null-sink",
                         "sink_name=OpenDeskCast",
-                        'sink_properties=device.description="Audio to OpenDeskCast"',
+                        "sink_properties=device.description=Audio_to_OpenDeskCast",
                     ],
                     capture_output=True,
                     text=True,
                     timeout=3,
                 )
+                if load_res.returncode != 0:
+                    load_res = subprocess.run(
+                        ["pactl", "load-module", "module-null-sink", "sink_name=OpenDeskCast"],
+                        capture_output=True,
+                        text=True,
+                        timeout=3,
+                    )
                 if load_res.returncode == 0:
                     self._linux_module_id = load_res.stdout.strip()
                     subprocess.run(["pactl", "set-default-sink", "OpenDeskCast"], timeout=2)
@@ -437,7 +444,9 @@ class _SubprocessAudioWorker(threading.Thread):
                     break
                 chunk = self.proc.stdout.read(CHUNK_BYTES)
                 if not chunk:
-                    break
+                    time.sleep(0.02)
+                    self.callback(b"\x00" * CHUNK_BYTES)
+                    continue
                 self.callback(chunk)
         except Exception:
             silence = b"\x00" * CHUNK_BYTES
@@ -511,8 +520,6 @@ class AudioStreamer:
                     "--format=s16le",
                     f"--rate={self.sample_rate}",
                     f"--channels={self.channels}",
-                    "-d",
-                    "OpenDeskCast.monitor",
                 ]
                 self._worker = _SubprocessAudioWorker(cmd, self._broadcast_chunk)
                 self._worker.start()
@@ -523,7 +530,7 @@ class AudioStreamer:
                     "-f",
                     "pulse",
                     "-i",
-                    "OpenDeskCast.monitor",
+                    "default",
                     "-ac",
                     str(self.channels),
                     "-ar",
@@ -576,10 +583,10 @@ class AudioStreamer:
             except RuntimeError:
                 pass
             self._subscribers.add(queue)
-            if self._worker is None or not self._worker.is_alive():
-                self._start_worker()
             if audio_enabled:
                 self.device_manager.route_audio_to_cast()
+            if self._worker is None or not self._worker.is_alive():
+                self._start_worker()
 
     def remove_subscriber(self, queue: asyncio.Queue[bytes]) -> None:
         with self._lock:

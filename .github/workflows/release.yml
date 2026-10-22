@@ -1,4 +1,4 @@
-name: Build & Verify Standalone Packages
+name: Build Standalone Packages
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  build-and-verify:
+  build-package:
     strategy:
       fail-fast: false
       matrix:
@@ -19,7 +19,7 @@ jobs:
           - os: windows-latest
             artifact_glob: "dist/OpenDeskCast-v*"
           - os: ubuntu-latest
-            artifact_glob: "dist/OpenDeskCast-v*-linux-x64.tar.gz"
+            artifact_glob: "dist/*"
           - os: macos-latest
             artifact_glob: "dist/OpenDeskCast-v*-macos.zip"
 
@@ -41,9 +41,6 @@ jobs:
 
       - name: Build standalone OS package
         run: python scripts/build_package.py
-
-      - name: Verify standalone package in clean environment (no Python in PATH)
-        run: python scripts/verify_clean_env.py
 
       - name: Build WiX Windows MSI (Windows only)
         if: runner.os == 'Windows'

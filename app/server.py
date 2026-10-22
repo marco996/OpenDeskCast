@@ -103,7 +103,7 @@ async def disable_browser_cache(request: Request, call_next):
 def _is_localhost(client_host: str | None) -> bool:
     if not client_host:
         return False
-    return client_host in {"127.0.0.1", "::1", "localhost", "testclient"}
+    return client_host in {"127.0.0.1", "::1", "localhost"}
 
 
 def _require_localhost(request: Request) -> None:

@@ -1,77 +1,58 @@
 # OpenDeskCast
 
-> [!IMPORTANT]
-> ### 🚀 Vuoi solo usare OpenDeskCast senza configurare nulla?
-> **Non scaricare il codice sorgente con "Code -> Download ZIP"**!  
-> Scarica direttamente l'applicazione pronta per l'uso (nessun Python o compilatore richiesto):  
-> 👉 **[Scarica l'Installer Windows (.msi) o il pacchetto portatile (.zip) da GitHub Releases](https://github.com/marco996/OpenDeskCast/releases/latest)**  
-> 
-> *Consigliato per Windows: scarica il file **`OpenDeskCast-v1.0.0-windows-x64.msi`** (installazione guidata nativa con 1 clic, zero permessi di amministratore richiesti e icone create automaticamente).*
+> **Trasmetti lo schermo del PC a qualsiasi smartphone, tablet o browser nella stessa rete locale, istantaneamente e senza installare app sul dispositivo ricevente.**
 
-**OpenDeskCast** è un software leggero, autonomo e ad altissime prestazioni per trasmettere in tempo reale lo schermo del PC verso qualsiasi dispositivo sulla rete locale (tablet, smartphone, altri computer o smart TV) tramite un comune browser web, senza installare alcuna app sugli spettatori.
-
-**OpenDeskCast** is a lightweight, standalone, ultra-low-latency local screen-casting utility that streams your PC display to any device on your local network (tablets, phones, laptops, smart TVs) over a standard web browser — zero client apps required.
+OpenDeskCast è un'applicazione open source multipiattaforma (Windows, Linux, macOS) progettata per la trasmissione ultra-reattiva dello schermo da un computer verso qualsiasi dispositivo dotato di browser web moderno (Chrome, Safari, Edge, Firefox).
 
 ---
 
-## Caratteristiche Principali / Key Features
+## Caratteristiche Principali
 
-- **Latenza Ultra-Bassa (Real-Time Delta Streaming)**:
-  - Cattura nativa Win32 GDI con `HBITMAP` persistente su Windows (e fallback `mss` su Linux/macOS).
-  - Codifica differenziale **Delta Bounding-Box** (`<HHHH`): trasmette solo il rettangolo dello schermo effettivamente cambiato, riducendo fino al 90% il traffico Wi-Fi durante la scrittura o l'uso di presentazioni.
-  - Controllo di flusso adattivo **Client-Paced (`1-frame-in-flight`)**: zero code TCP o ritardi cumulativi anche su tablet meno recenti, fino a **60 FPS** e **Qualità 100% (4:4:4)**.
-- **Doppio Metodo di Collegamento Sicuro**:
-  1. **Dispositivi con Fotocamera (QR Code)**: inquadra il QR Code mostrato nella finestra di OpenDeskCast per aprire istantaneamente lo schermo a tutto schermo con token crittografico effimero.
-  2. **Dispositivi senza Fotocamera (IP Base + PIN a 4 cifre)**: apri l'indirizzo IP base mostrato sotto il QR Code (es. `http://192.168.1.x:8765`, salvabile nei Preferiti) e digita sul tastierino a schermo il **PIN a 4 cifre**.
-- **Sicurezza per Reti Pubbliche / Universitarie**:
-  - Pulsante **Rigenera QR / Disconnetti** per invalidare istantaneamente il QR e il PIN correnti ed espellere tutti gli spettatori.
-  - Interruttore **Blocca nuovi dispositivi (Rete Pubblica)** per rifiutare qualsiasi nuovo accesso una volta collegati i propri dispositivi.
-  - Aggiornamento dinamico automatico dell'indirizzo IP e del QR Code in tempo reale se il PC cambia rete Wi-Fi o hotspot.
-- **28 Lingue Integrate**: interfaccia tradotta in 28 lingue selezionabili al volo.
-- **100% Standalone (Zero Dipendenza da Python)**: i pacchetti precompilati includono già il runtime isolato (`engine/`) e non richiedono Python installato sul PC dell'utente.
+- **Zero Installazione per lo Spettatore**: Funziona su qualsiasi dispositivo (iOS, Android, Windows, Mac, Linux) tramite un semplice browser web (PWA nativa).
+- **Controllo Totale dal PC**: Tutte le impostazioni (scelta del monitor, FPS, qualità, attivazione audio) sono regolate esclusivamente dal PC trasmittente. Lo spettatore è uno schermo passivo tipo cavo HDMI.
+- **Supporto Multi-Monitor Reale**: Riconosce e seleziona individualmente ciascun monitor fisico collegato al PC.
+- **Streaming Audio Sincronizzato**: Quando l'audio è attivo dal PC, il flusso audio di sistema viene instradato verso la trasmissione e le casse locali del PC vengono silenziate; disattivando l'audio, gli altoparlanti locali tornano immediatamente attivi.
+- **Sicurezza Nativa a Doppio Livello**: Accesso protetto tramite QR Code con token crittografico o digitazione manuale di un PIN a 4 cifre.
+- **Pannello di Regia Riservato a Localhost**: Le API amministrative e il pannello di controllo sono inaccessibili dalla rete esterna, garantendo la totale riservatezza della regia.
+- **Pacchetto Standalone Zero-Dipendenze**: Nessuna necessità di installare Python, .NET o runtime esterni per l'utente finale.
 
 ---
 
-## Utilizzo Rapido / Quick Start
+## Installazione ed Esecuzione
 
-### 1. Da Installer MSI o Pacchetto Standalone (Consigliato / Recommended)
-1. Dalla sezione **[Releases](https://github.com/marco996/OpenDeskCast/releases/latest)**:
-   - Su Windows: scarica ed esegui **`OpenDeskCast-v1.0.0-windows-x64.msi`** (installazione nativa a 1 clic, crea automaticamente il collegamento sul Desktop e nel Menu Start).  
-     *In alternativa è disponibile la versione portabile senza installazione `OpenDeskCast-v1.0.0-windows-x64.zip`.*
-   - Su Linux / macOS: scarica il pacchetto portatile `.tar.gz` o `.zip`.
-2. Avvia **`OpenDeskCast.exe`** (su Windows) o `./OpenDeskCast` (su Linux/macOS).
-3. *Nota Firewall Windows*: al primo avvio, consenti l'accesso a `OpenDeskCastEngine` su **Reti private** e **Reti pubbliche** nella finestra di Windows Defender Firewall.
-4. Collega uno o più spettatori:
-   - **Con fotocamera**: inquadra il QR Code.
-   - **Senza fotocamera**: clicca su **Setup dispositivo** per le istruzioni, apri nel browser l'indirizzo `http://<IP>:8765` indicato sotto il QR e inserisci il **PIN a 4 cifre**.
+### Windows
+1. Scarica l'installer `.msi` o `.exe` dalla pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases).
+2. Avvia l'installer: crea automaticamente il collegamento nel Menu Start e sul Desktop.
+3. Fai doppio clic su **OpenDeskCast**: si apre la finestra di regia e viene visualizzato il QR Code per connettere gli spettatori.
 
-### 2. Se hai scaricato il Codice Sorgente (Installazione 1-click per Windows)
-Se hai scaricato l'archivio sorgente (`OpenDeskCast-main.zip`) o clonato la repository:
-1. Fai doppio clic su **`install_windows.bat`**.  
-   *Lo script configurerà tutto automaticamente: compila l'eseguibile, crea l'ambiente isolato, installa le dipendenze e genera il collegamento con icona sul Desktop e nel Menu Start.*
-2. Una volta terminato, avvia il programma dal Desktop oppure con doppio clic su **`start_windows.bat`** (o `OpenDeskCast.exe`).
+### Linux (Ubuntu / Debian / Mint)
+1. Scarica il pacchetto **`opendeskcast_1.0.0_amd64.deb`** dalla pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases).
+2. Installa con un solo comando da terminale (installa automaticamente anche le dipendenze di sistema):
+   ```bash
+   sudo apt install ./opendeskcast_1.0.0_amd64.deb
+   ```
+3. Avvia **OpenDeskCast** dal menù delle applicazioni del tuo computer o digitando `opendeskcast` nel terminale.
+
+*(In alternativa, per avvio rapido da sorgente su qualsiasi distribuzione Linux: `./run_linux.sh`)*
 
 ---
 
-## Compilazione da Sorgente / Building from Source
+## Compilazione dei Pacchetti Autonomi (Release Build)
 
-Se desideri eseguire i test o generare i pacchetti standalone autonomi a partire dal codice sorgente:
+Per generare i pacchetti autonomi per gli utenti finali dal codice sorgente:
 
 ```powershell
-# 1. Installa le dipendenze di compilazione
+# 1. Installa le dipendenze di build
 python -m pip install -r requirements.txt
 
-# 2. Esegui la suite di test unitari
-python -m pytest -v
-
-# 3. Genera il pacchetto autonomo per il sistema operativo corrente (in dist/)
+# 2. Genera il pacchetto autonomo per il sistema operativo corrente (in dist/)
 python scripts/build_package.py
 
-# 4. Genera il pacchetto installer MSI per Windows (richiede WiX v4)
+# 3. Genera il pacchetto installer MSI per Windows (richiede WiX v4)
 python scripts/build_msi.py
 
-# 5. Verifica il pacchetto in un ambiente temporaneo isolato privo di Python nel PATH
-python scripts/verify_clean_env.py
+# 4. Genera il pacchetto Debian (.deb) per Linux
+python scripts/build_deb.py
 ```
 
 ---
@@ -93,15 +74,14 @@ OpenDeskCast/
 │   ├── index.html        # Pagina spettatore fullscreen (PWA)
 │   └── style.css         # Stile Fluent Dark
 ├── scripts/
-│   ├── build_package.py  # Pipeline ripetibile di compilazione pacchetti autonomi (PyInstaller + C#)
-│   ├── build_msi.py      # Generatore pacchetto installer nativo Windows (.msi) con WiX v4
-│   └── verify_clean_env.py # Test automatico del pacchetto su ambiente pulito senza Python nel PATH
-├── tests/                # Suite di test automatizzati (pytest)
+│   ├── build_package.py  # Pipeline di compilazione pacchetti autonomi (PyInstaller + C#)
+│   └── build_msi.py      # Generatore pacchetto installer nativo Windows (.msi) con WiX v4
 ├── launcher.cs           # Interfaccia nativa Windows Fluent Dark (OpenDeskCast.exe)
-├── install_windows.bat   # Script di installazione automatica a 1 clic per Windows
+├── install_windows.bat   # Script di installazione automatica per Windows
 ├── start_windows.bat     # Script di avvio universale per Windows
+├── run_linux.sh          # Script di avvio automatico per Linux
 ├── run.py                # Entrypoint multipiattaforma del server
-├── requirements.txt      # Dipendenze per lo sviluppo e il packaging
+├── requirements.txt      # Dipendenze Python
 ├── VERSION               # Versione semantica del rilascio
 └── LICENSE               # Licenza MIT
 ```

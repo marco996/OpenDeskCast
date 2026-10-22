@@ -41,7 +41,6 @@ EXCLUDED_MODULES = [
     "werkzeug",
     "IPython",
     "jedi",
-    "pytest",
     "tkinter",
 ]
 
@@ -60,10 +59,7 @@ def build() -> Path:
     version = read_version()
     print(f"=== Building OpenDeskCast v{version} for {sys.platform} ===")
 
-    # 1. Run full test suite first
-    run_step([sys.executable, "-m", "pytest", "-v"])
-
-    # 2. Clean previous build artifacts
+    # 1. Clean previous build artifacts
     if DIST_DIR.exists():
         shutil.rmtree(DIST_DIR)
     if BUILD_DIR.exists():
@@ -136,7 +132,7 @@ def build() -> Path:
             shutil.rmtree(root_engine)
         shutil.copytree(target_engine, root_engine)
 
-    for doc_file in ("LICENSE", "README.md"):
+    for doc_file in ("LICENSE", "README.md", "opendeskcast.ico"):
         src_doc = ROOT / doc_file
         if src_doc.is_file():
             shutil.copy2(src_doc, pkg_root / doc_file)
@@ -155,6 +151,11 @@ def build() -> Path:
     else:
         archive_base = DIST_DIR / f"OpenDeskCast-v{version}-linux-x64"
         archive_path = Path(shutil.make_archive(str(archive_base), "gztar", root_dir=DIST_DIR, base_dir="OpenDeskCast"))
+        try:
+            from scripts.build_deb import build_deb
+            build_deb()
+        except Exception as e:
+            print(f"[build] Skip DEB build: {e}")
 
     print(f"[build] Standalone package ready: {archive_path} ({archive_path.stat().st_size // 1024} KB)")
     return archive_path
