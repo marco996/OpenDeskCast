@@ -45,11 +45,11 @@ jobs:
       - name: Verify standalone package in clean environment (no Python in PATH)
         run: python scripts/verify_clean_env.py
 
-      - name: Build Inno Setup Windows Installer (Windows only)
+      - name: Build WiX Windows MSI (Windows only)
         if: runner.os == 'Windows'
         run: |
-          choco install innosetup --no-progress
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+          dotnet tool install --global wix --version 4.0.5 --add-source https://api.nuget.org/v3/index.json
+          python scripts/build_msi.py
 
       - name: Upload standalone release artifact
         uses: actions/upload-artifact@v4

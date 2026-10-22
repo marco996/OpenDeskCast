@@ -140,6 +140,11 @@ def build() -> Path:
     if sys.platform == "win32":
         archive_base = DIST_DIR / f"OpenDeskCast-v{version}-windows-x64"
         archive_path = Path(shutil.make_archive(str(archive_base), "zip", root_dir=DIST_DIR, base_dir="OpenDeskCast"))
+        try:
+            from scripts.build_msi import build_msi
+            build_msi()
+        except Exception as e:
+            print(f"[build] Skip MSI build: {e}")
     elif sys.platform == "darwin":
         archive_base = DIST_DIR / f"OpenDeskCast-v{version}-macos"
         archive_path = Path(shutil.make_archive(str(archive_base), "zip", root_dir=DIST_DIR, base_dir="OpenDeskCast"))

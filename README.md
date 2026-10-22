@@ -3,10 +3,10 @@
 > [!IMPORTANT]
 > ### 🚀 Vuoi solo usare OpenDeskCast senza configurare nulla?
 > **Non scaricare il codice sorgente con "Code -> Download ZIP"**!  
-> Scarica direttamente l'applicazione pronta con **doppio clic** (nessun Python o compilatore richiesto):  
-> 👉 **[Scarica l'ultimo pacchetto pronto da GitHub Releases](https://github.com/marco996/OpenDeskCast/releases/latest)**  
+> Scarica direttamente l'applicazione pronta per l'uso (nessun Python o compilatore richiesto):  
+> 👉 **[Scarica l'Installer Windows (.msi) o il pacchetto portatile (.zip) da GitHub Releases](https://github.com/marco996/OpenDeskCast/releases/latest)**  
 > 
-> *Troverai il file `.zip` autonomo già compilato per Windows (con `OpenDeskCast.exe` e runtime isolato) pronto all'uso.*
+> *Consigliato per Windows: scarica il file **`OpenDeskCast-v1.0.0-windows-x64.msi`** (installazione guidata nativa con 1 clic, zero permessi di amministratore richiesti e icone create automaticamente).*
 
 **OpenDeskCast** è un software leggero, autonomo e ad altissime prestazioni per trasmettere in tempo reale lo schermo del PC verso qualsiasi dispositivo sulla rete locale (tablet, smartphone, altri computer o smart TV) tramite un comune browser web, senza installare alcuna app sugli spettatori.
 
@@ -34,8 +34,11 @@
 
 ## Utilizzo Rapido / Quick Start
 
-### 1. Da Pacchetto Standalone (Consigliato / Recommended)
-1. Scarica ed estrai l'archivio per il tuo sistema operativo dalla sezione **Releases** (`OpenDeskCast-v1.0.0-windows-x64.zip`, `linux-x64.tar.gz`, `macos.zip`).
+### 1. Da Installer MSI o Pacchetto Standalone (Consigliato / Recommended)
+1. Dalla sezione **[Releases](https://github.com/marco996/OpenDeskCast/releases/latest)**:
+   - Su Windows: scarica ed esegui **`OpenDeskCast-v1.0.0-windows-x64.msi`** (installazione nativa a 1 clic, crea automaticamente il collegamento sul Desktop e nel Menu Start).  
+     *In alternativa è disponibile la versione portabile senza installazione `OpenDeskCast-v1.0.0-windows-x64.zip`.*
+   - Su Linux / macOS: scarica il pacchetto portatile `.tar.gz` o `.zip`.
 2. Avvia **`OpenDeskCast.exe`** (su Windows) o `./OpenDeskCast` (su Linux/macOS).
 3. *Nota Firewall Windows*: al primo avvio, consenti l'accesso a `OpenDeskCastEngine` su **Reti private** e **Reti pubbliche** nella finestra di Windows Defender Firewall.
 4. Collega uno o più spettatori:
@@ -64,7 +67,10 @@ python -m pytest -v
 # 3. Genera il pacchetto autonomo per il sistema operativo corrente (in dist/)
 python scripts/build_package.py
 
-# 4. Verifica il pacchetto in un ambiente temporaneo isolato privo di Python nel PATH
+# 4. Genera il pacchetto installer MSI per Windows (richiede WiX v4)
+python scripts/build_msi.py
+
+# 5. Verifica il pacchetto in un ambiente temporaneo isolato privo di Python nel PATH
 python scripts/verify_clean_env.py
 ```
 
@@ -88,9 +94,12 @@ OpenDeskCast/
 │   └── style.css         # Stile Fluent Dark
 ├── scripts/
 │   ├── build_package.py  # Pipeline ripetibile di compilazione pacchetti autonomi (PyInstaller + C#)
+│   ├── build_msi.py      # Generatore pacchetto installer nativo Windows (.msi) con WiX v4
 │   └── verify_clean_env.py # Test automatico del pacchetto su ambiente pulito senza Python nel PATH
 ├── tests/                # Suite di test automatizzati (pytest)
 ├── launcher.cs           # Interfaccia nativa Windows Fluent Dark (OpenDeskCast.exe)
+├── install_windows.bat   # Script di installazione automatica a 1 clic per Windows
+├── start_windows.bat     # Script di avvio universale per Windows
 ├── run.py                # Entrypoint multipiattaforma del server
 ├── requirements.txt      # Dipendenze per lo sviluppo e il packaging
 ├── VERSION               # Versione semantica del rilascio
