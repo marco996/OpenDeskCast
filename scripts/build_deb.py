@@ -133,10 +133,14 @@ def build_deb() -> Path:
 
     print(f"=== [DEB] Creazione pacchetto nativo Debian/Ubuntu {deb_filename} ===")
 
-    if BUILD_DIR.exists():
-        shutil.rmtree(BUILD_DIR)
+    if sys.platform != "win32":
+        deb_build_dir = Path("/tmp/opendeskcast_deb_build")
+    else:
+        deb_build_dir = BUILD_DIR
+    if deb_build_dir.exists():
+        shutil.rmtree(deb_build_dir)
 
-    pkg_root = BUILD_DIR / "package"
+    pkg_root = deb_build_dir / "package"
     debian_dir = pkg_root / "DEBIAN"
     opt_dir = pkg_root / "opt" / "opendeskcast"
     bin_dir = pkg_root / "usr" / "bin"
@@ -224,6 +228,10 @@ Description: Trasmissione schermo e audio PC a qualsiasi browser locale
         "exit 0\n",
         encoding="utf-8",
     )
+    try:
+        postinst_file.chmod(0o755)
+    except Exception:
+        pass
 
     postrm_file = debian_dir / "postrm"
     postrm_file.write_text(
@@ -239,6 +247,10 @@ Description: Trasmissione schermo e audio PC a qualsiasi browser locale
         "exit 0\n",
         encoding="utf-8",
     )
+    try:
+        postrm_file.chmod(0o755)
+    except Exception:
+        pass
 
     # 7. Compilazione pacchetto .deb
     dpkg_deb = shutil.which("dpkg-deb")

@@ -60,8 +60,11 @@ def build() -> Path:
     print(f"=== Building OpenDeskCast v{version} for {sys.platform} ===")
 
     # 1. Clean previous build artifacts
-    if DIST_DIR.exists():
-        shutil.rmtree(DIST_DIR)
+    DIST_DIR.mkdir(parents=True, exist_ok=True)
+    for sub in ("OpenDeskCast", "OpenDeskCastEngine"):
+        p = DIST_DIR / sub
+        if p.exists():
+            shutil.rmtree(p)
     if BUILD_DIR.exists():
         shutil.rmtree(BUILD_DIR)
 
@@ -85,9 +88,10 @@ def build() -> Path:
         "uvicorn",
         "--collect-submodules",
         "websockets",
-        "--collect-submodules",
-        "comtypes",
     ]
+
+    if sys.platform == "win32":
+        pyi_cmd.extend(["--collect-submodules", "comtypes"])
 
     if (ROOT / "opendeskcast.ico").is_file() and sys.platform == "win32":
         pyi_cmd.extend(["--icon", str(ROOT / "opendeskcast.ico"), "--noconsole"])
