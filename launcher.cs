@@ -233,6 +233,7 @@ namespace OpenDeskCastLauncher
         private readonly Label _lblScale;
         private readonly Label _lblCursor;
         private readonly Label _lblAudio;
+        private readonly Label _lblAudioSub;
         private readonly Label _lblLock;
         private readonly Label _lblLockSub;
         private readonly ComboBox _cmbMonitor;
@@ -523,20 +524,33 @@ namespace OpenDeskCastLauncher
             _tglCursor.CheckedChanged += (s, e) => PushSettings();
             ctrlCard.Controls.Add(_tglCursor);
 
-            // Row 4: Switch Audio (Y: 178)
+            // Row 4: Switch Audio (Y: 172)
             _lblAudio = new Label
             {
                 Text = "Trasmetti audio del PC",
                 Font = new Font("Segoe UI", 9.2F),
                 ForeColor = Color.FromArgb(240, 240, 240),
-                Location = new Point(14, 178),
-                Size = new Size(295, 22)
+                Location = new Point(14, 172),
+                Size = new Size(295, 20)
             };
             ctrlCard.Controls.Add(_lblAudio);
 
-            _tglAudio = new FluentToggle { Location = new Point(324, 178) };
+            _lblAudioSub = new Label
+            {
+                Text = "Dispositivo: Audio to OpenDeskCast (PC silenziato)",
+                Font = new Font("Segoe UI", 7.8F),
+                ForeColor = Color.FromArgb(108, 203, 95),
+                Location = new Point(14, 193),
+                Size = new Size(295, 18)
+            };
+            ctrlCard.Controls.Add(_lblAudioSub);
+
+            _tglAudio = new FluentToggle { Location = new Point(324, 176) };
             _tglAudio.SetCheckedSilent(true);
-            _tglAudio.CheckedChanged += (s, e) => PushSettings();
+            _tglAudio.CheckedChanged += (s, e) => {
+                UpdateAudioSubLabel();
+                PushSettings();
+            };
             ctrlCard.Controls.Add(_tglAudio);
 
             // Row 5: Switch Lock New Devices on Public Network (Y: 220)
@@ -621,8 +635,30 @@ namespace OpenDeskCastLauncher
             _lblLockSub.Text = lp.LockSub;
 
             _updatingUi = false;
+            UpdateAudioSubLabel();
             RebuildMonitorNames();
             UpdateBadgeText(_lastViewersCount);
+        }
+
+        private void UpdateAudioSubLabel()
+        {
+            if (_lblAudioSub == null) return;
+            LangPack lp = CurrentLang();
+            bool isIt = lp.Code == "it";
+            if (_tglAudio.Checked)
+            {
+                _lblAudioSub.Text = isIt
+                    ? "Dispositivo: Audio to OpenDeskCast (PC silenziato)"
+                    : "Device: Audio to OpenDeskCast (PC muted)";
+                _lblAudioSub.ForeColor = Color.FromArgb(108, 203, 95);
+            }
+            else
+            {
+                _lblAudioSub.Text = isIt
+                    ? "Dispositivo: Altoparlanti PC (Cast disattivato)"
+                    : "Device: Local PC Speakers (Cast inactive)";
+                _lblAudioSub.ForeColor = Color.FromArgb(148, 148, 148);
+            }
         }
 
         private void ShowGuideDialog()

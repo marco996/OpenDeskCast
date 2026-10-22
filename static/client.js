@@ -5,7 +5,6 @@
   const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
   const pinOverlay = document.getElementById("pin-overlay");
   const pinBoxes = document.getElementById("pin-boxes");
-  const unmuteBanner = document.getElementById("unmute-banner");
   const digitEls = [
     document.getElementById("pin-d0"),
     document.getElementById("pin-d1"),
@@ -86,7 +85,6 @@
   function wipeToBlackAndLock() {
     sessionTerminated = true;
     sessionToken = "";
-    updateUnmuteBanner(false);
     if (pinOverlay) pinOverlay.classList.add("hidden");
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -192,46 +190,20 @@
     }
   });
 
-  function updateUnmuteBanner(show) {
-    if (!unmuteBanner) return;
-    if (show && !sessionTerminated && sessionToken) {
-      unmuteBanner.classList.remove("hidden");
-    } else {
-      unmuteBanner.classList.add("hidden");
-    }
-  }
-
   function initAudioContext() {
     if (audioCtx) return;
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
     try {
       audioCtx = new AudioContextClass({ latencyHint: "interactive" });
-      audioCtx.onstatechange = () => {
-        if (audioCtx && audioCtx.state === "running") {
-          updateUnmuteBanner(false);
-        }
-      };
-      if (audioCtx.state === "running") {
-        updateUnmuteBanner(false);
-      }
     } catch (_) {}
   }
 
   function ensureAudioUnlocked() {
     initAudioContext();
     if (audioCtx && audioCtx.state === "suspended") {
-      audioCtx.resume().then(() => {
-        updateUnmuteBanner(false);
-      }).catch(() => {});
+      audioCtx.resume().catch(() => {});
     }
-  }
-
-  if (unmuteBanner) {
-    unmuteBanner.addEventListener("click", (e) => {
-      e.stopPropagation();
-      ensureAudioUnlocked();
-    });
   }
 
   window.addEventListener("pointerdown", ensureAudioUnlocked, { passive: true });
@@ -274,10 +246,8 @@
       if (!audioCtx) return;
 
       if (audioCtx.state === "suspended") {
-        updateUnmuteBanner(true);
+        audioCtx.resume().catch(() => {});
         return;
-      } else {
-        updateUnmuteBanner(false);
       }
 
       const int16 = new Int16Array(ev.data);

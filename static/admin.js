@@ -48,6 +48,7 @@
   const selScale = document.getElementById("sel-scale");
   const chkCursor = document.getElementById("chk-cursor");
   const chkAudio = document.getElementById("chk-audio");
+  const lblAudioSub = document.getElementById("lbl-audio-sub");
   const chkLock = document.getElementById("chk-lock");
   const btnRefresh = document.getElementById("btn-refresh");
   const btnRotateToken = document.getElementById("btn-rotate-token");
@@ -147,6 +148,7 @@
     document.getElementById("lbl-audio").textContent = dict.aud;
     document.getElementById("lbl-lock").textContent = dict.lock;
     document.getElementById("lbl-lock-sub").textContent = dict.lockSub;
+    updateAudioSub();
     updateViewersBadge(lastCount);
     const curMon = parseInt(selMonitor.value, 10) || 0;
     renderMonitorOptions(curMon);
@@ -175,6 +177,22 @@
     applyTranslations();
     selLang.blur();
   });
+
+  function updateAudioSub() {
+    if (!lblAudioSub) return;
+    const isIt = currentLang === "it";
+    if (chkAudio.checked) {
+      lblAudioSub.textContent = isIt
+        ? "Dispositivo: Audio to OpenDeskCast (PC silenziato)"
+        : "Device: Audio to OpenDeskCast (PC muted)";
+      lblAudioSub.style.color = "#6ccb5f";
+    } else {
+      lblAudioSub.textContent = isIt
+        ? "Dispositivo: Altoparlanti PC (Cast disattivato)"
+        : "Device: Local PC Speakers (Cast inactive)";
+      lblAudioSub.style.color = "#9e9e9e";
+    }
+  }
 
   async function loadStatus() {
     try {
@@ -207,6 +225,7 @@
       chkCursor.checked = Boolean(data.settings.draw_cursor);
       chkAudio.checked = Boolean(data.settings.audio_enabled);
       chkLock.checked = Boolean(data.settings.lock_new_viewers);
+      updateAudioSub();
     } catch (_) {}
   }
 
@@ -252,7 +271,10 @@
   selQuality.addEventListener("change", pushSettings);
   selScale.addEventListener("change", pushSettings);
   chkCursor.addEventListener("change", pushSettings);
-  chkAudio.addEventListener("change", pushSettings);
+  chkAudio.addEventListener("change", () => {
+    updateAudioSub();
+    pushSettings();
+  });
   chkLock.addEventListener("change", pushSettings);
   btnRefresh.addEventListener("click", loadStatus);
   btnRotateToken.addEventListener("click", rotateToken);

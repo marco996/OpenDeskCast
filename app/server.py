@@ -175,7 +175,8 @@ async def disconnect_all_viewers(reason: str = "SESSION_TERMINATED") -> None:
 
 
 async def cleanup_all() -> None:
-    """Disconnect all viewers and invalidate token on application exit."""
+    """Disconnect all viewers, restore audio, and invalidate token on application exit."""
+    audio_streamer.shutdown()
     await disconnect_all_viewers("SESSION_TERMINATED")
 
 
@@ -215,6 +216,7 @@ def api_update_settings(request: Request, req: HostSettingsUpdate) -> dict[str, 
         host_state.draw_cursor = bool(req.draw_cursor)
     if req.audio_enabled is not None:
         host_state.audio_enabled = bool(req.audio_enabled)
+        audio_streamer.on_audio_enabled_changed(host_state.audio_enabled)
     if req.lock_new_viewers is not None:
         host_state.lock_new_viewers = bool(req.lock_new_viewers)
     host_state.version += 1
@@ -384,7 +386,7 @@ async def ws_audio(ws: WebSocket, t: str | None = Query(default=None)) -> None:
 
     active_audio_ws.add(ws)
     queue: asyncio.Queue[bytes] = asyncio.Queue(maxsize=16)
-    audio_streamer.add_subscriber(queue)
+    audio_streamer.add_subscriber(queue, audio_enabled=host_state.audio_enabled)
     try:
         while True:
             chunk = await queue.get()
