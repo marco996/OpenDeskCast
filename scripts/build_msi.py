@@ -6,7 +6,6 @@ import re
 import shutil
 import subprocess
 import sys
-import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST_DIR = ROOT / "dist"
@@ -49,7 +48,7 @@ def generate_wxs(version: str, wxs_path: Path) -> None:
         '           Scope="perUser">',
         '    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />',
         '    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />',
-        '    <Icon Id="AppIcon" SourceFile="opendeskcast.ico" />',
+        f'    <Icon Id="AppIcon" SourceFile="{str((ROOT / "opendeskcast.ico").resolve())}" />',
         '    <Property Id="ARPPRODUCTICON" Value="AppIcon" />',
         '    <StandardDirectory Id="LocalAppDataFolder">',
         '      <Directory Id="ProgramsFolder" Name="Programs">',
@@ -57,11 +56,11 @@ def generate_wxs(version: str, wxs_path: Path) -> None:
     ]
 
     component_ids: list[str] = []
+    exe_file_id = ""
 
     # Map directories and files
     rel_dirs: dict[str, str] = {"": "INSTALLFOLDER"}
     dir_counter = 0
-    comp_counter = 0
 
     for root, dirs, files in os.walk(SOURCE_DIR):
         rel_root = os.path.relpath(root, SOURCE_DIR)
@@ -79,7 +78,7 @@ def generate_wxs(version: str, wxs_path: Path) -> None:
     file_counter = 0
 
     def write_dir(rel_path: str, indent: str) -> None:
-        nonlocal comp_counter, file_counter
+        nonlocal file_counter, exe_file_id
         curr_id = rel_dirs[rel_path]
         curr_fs_path = SOURCE_DIR if not rel_path else SOURCE_DIR / rel_path
 
@@ -98,16 +97,10 @@ def generate_wxs(version: str, wxs_path: Path) -> None:
             component_ids.append(cid)
             fpath = curr_fs_path / f
             src = str(fpath.resolve())
-            lines.append(f'{indent}<Component Id="{cid}" Directory="{curr_id}">')
             if f == "OpenDeskCast.exe" and rel_path == "":
-                lines.append(f'{indent}  <File Id="{fid}" Source="{src}" KeyPath="yes">')
-                lines.append('    <Shortcut Id="DesktopShortcut" Directory="DesktopFolder" Name="OpenDeskCast"')
-                lines.append('              WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" Advertise="yes" />')
-                lines.append('    <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="OpenDeskCast"')
-                lines.append('              WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" Advertise="yes" />')
-                lines.append(f'{indent}  </File>')
-            else:
-                lines.append(f'{indent}  <File Id="{fid}" Source="{src}" KeyPath="yes" />')
+                exe_file_id = fid
+            lines.append(f'{indent}<Component Id="{cid}" Directory="{curr_id}">')
+            lines.append(f'{indent}  <File Id="{fid}" Source="{src}" KeyPath="yes" />')
             lines.append(f'{indent}</Component>')
 
         for d in sorted(subdirs):
@@ -119,12 +112,24 @@ def generate_wxs(version: str, wxs_path: Path) -> None:
 
     write_dir("", "          ")
 
+    component_ids.extend(["C_DesktopShortcut", "C_StartMenuShortcut"])
+
     lines.extend([
         '        </Directory>',
         '      </Directory>',
         '    </StandardDirectory>',
-        '    <StandardDirectory Id="ProgramMenuFolder" />',
-        '    <StandardDirectory Id="DesktopFolder" />',
+        '    <StandardDirectory Id="DesktopFolder">',
+        '      <Component Id="C_DesktopShortcut">',
+        '        <RegistryValue Root="HKCU" Key="Software\\OpenDeskCast" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />',
+        f'        <Shortcut Id="DesktopShortcut" Name="OpenDeskCast" Target="[!{exe_file_id}]" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" IconIndex="0" />',
+        '      </Component>',
+        '    </StandardDirectory>',
+        '    <StandardDirectory Id="ProgramMenuFolder">',
+        '      <Component Id="C_StartMenuShortcut">',
+        '        <RegistryValue Root="HKCU" Key="Software\\OpenDeskCast" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />',
+        f'        <Shortcut Id="StartMenuShortcut" Name="OpenDeskCast" Target="[!{exe_file_id}]" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" IconIndex="0" />',
+        '      </Component>',
+        '    </StandardDirectory>',
         '    <Feature Id="MainFeature" Title="OpenDeskCast" Level="1">',
     ])
 
