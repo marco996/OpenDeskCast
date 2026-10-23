@@ -650,13 +650,22 @@ class AudioStreamer:
                     self.device_id = self.device_manager._target_cast_endpoint
                 else:
                     self.device_id = "default"
+                if self._worker is not None:
+                    self._stop_worker()
+                if self._subscribers:
+                    self._start_worker()
             else:
                 self.device_manager.restore_audio()
                 self.device_id = "default"
-            if self._worker is not None:
-                self._stop_worker()
-                if self._subscribers:
-                    self._start_worker()
+                if self._worker is not None:
+                    self._stop_worker()
+                # Flush queues so no leftover speaker audio is played on receiver
+                for q in list(self._subscribers):
+                    while not q.empty():
+                        try:
+                            q.get_nowait()
+                        except Exception:
+                            break
 
     def set_device(self, device_id: str) -> None:
         # Backward compatibility for endpoints passing device_id
@@ -675,6 +684,9 @@ class AudioStreamer:
 
     def _broadcast_chunk(self, chunk: bytes) -> None:
         if not self._subscribers or not self._loop or self._loop.is_closed():
+            return
+        # If destination is set to local PC speakers, never stream audio to receivers
+        if self.destination != "cast":
             return
 
         def _deliver() -> None:
@@ -777,8 +789,8 @@ class AudioStreamer:
             self._subscribers.add(queue)
             if audio_enabled and self.destination == "cast":
                 self.device_manager.route_audio_to_cast()
-            if self._worker is None or not self._worker.is_alive():
-                self._start_worker()
+                if self._worker is None or not self._worker.is_alive():
+                    self._start_worker()
 
     def remove_subscriber(self, queue: asyncio.Queue[bytes]) -> None:
         with self._lock:
@@ -791,8 +803,12 @@ class AudioStreamer:
         with self._lock:
             if enabled and self.destination == "cast":
                 self.device_manager.route_audio_to_cast()
+                if self._subscribers and (self._worker is None or not self._worker.is_alive()):
+                    self._start_worker()
             else:
                 self.device_manager.restore_audio()
+                if self._worker is not None:
+                    self._stop_worker()
 
     def shutdown(self) -> None:
         with self._lock:

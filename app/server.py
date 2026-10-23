@@ -443,7 +443,7 @@ async def ws_audio(ws: WebSocket, t: str | None = Query(default=None)) -> None:
     try:
         while True:
             chunk = await queue.get()
-            if host_state.audio_enabled:
+            if host_state.audio_enabled and audio_streamer.destination == "cast":
                 await ws.send_bytes(chunk)
     except WebSocketDisconnect:
         pass
