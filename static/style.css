@@ -57,38 +57,6 @@ html, body {
   transform: translateZ(0);
 }
 
-.audio-tap-banner {
-  position: fixed;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(24, 24, 27, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(76, 194, 255, 0.35);
-  padding: 12px 24px;
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  z-index: 9999;
-  cursor: pointer;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: manipulation;
-}
-
-.audio-tap-banner.fading {
-  opacity: 0;
-  transform: translateX(-50%) scale(0.95);
-  pointer-events: none;
-}
-
 /* WINDOWS 11 FLUENT UTILITY (620x360 COMPACT) */
 .fluent-body {
   background: var(--mica-bg);

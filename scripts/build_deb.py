@@ -123,15 +123,221 @@ def build_deb_pure_python(pkg_root: Path, out_deb: Path) -> None:
     )
 
 
+def build_deb_from_tar(tar_path: Path, out_deb: Path, version: str) -> None:
+    """Build .deb directly from a Linux tar.gz release archive, updating static files."""
+    deb_binary = b"2.0\n"
+
+    # control.tar.gz
+    control_buf = io.BytesIO()
+    with tarfile.open(fileobj=control_buf, mode="w:gz", format=tarfile.GNU_FORMAT) as ctar:
+        control_content = f"""Package: opendeskcast
+Version: {version}
+Architecture: amd64
+Maintainer: Marco Scaglione <marcoscaglione96@gmail.com>
+Installed-Size: 105000
+Depends: pulseaudio-utils, libgl1
+Section: net
+Priority: optional
+Homepage: https://github.com/marco996/OpenDeskCast
+Description: Trasmissione schermo e audio PC a qualsiasi browser locale
+ OpenDeskCast consente la trasmissione istantanea e fluida dello schermo
+ e dell'audio di sistema verso qualsiasi smartphone, tablet o browser nella
+ stessa rete locale senza installare alcuna app sul dispositivo ricevente.
+""".encode("utf-8")
+        ti = tarfile.TarInfo("./control")
+        ti.size = len(control_content)
+        ti.mode = 0o644
+        ti.mtime = int(time.time())
+        ti.uid = 0
+        ti.gid = 0
+        ti.uname = "root"
+        ti.gname = "root"
+        ctar.addfile(ti, io.BytesIO(control_content))
+
+        postinst_content = b"""#!/bin/sh
+set -e
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications || true
+fi
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
+fi
+exit 0
+"""
+        ti = tarfile.TarInfo("./postinst")
+        ti.size = len(postinst_content)
+        ti.mode = 0o755
+        ti.mtime = int(time.time())
+        ti.uid = 0
+        ti.gid = 0
+        ti.uname = "root"
+        ti.gname = "root"
+        ctar.addfile(ti, io.BytesIO(postinst_content))
+
+        postrm_content = b"""#!/bin/sh
+set -e
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database -q /usr/share/applications || true
+    fi
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
+    fi
+fi
+exit 0
+"""
+        ti = tarfile.TarInfo("./postrm")
+        ti.size = len(postrm_content)
+        ti.mode = 0o755
+        ti.mtime = int(time.time())
+        ti.uid = 0
+        ti.gid = 0
+        ti.uname = "root"
+        ti.gname = "root"
+        ctar.addfile(ti, io.BytesIO(postrm_content))
+
+    control_data = control_buf.getvalue()
+
+    # data.tar.gz
+    data_buf = io.BytesIO()
+    static_dir = ROOT / "static"
+    with tarfile.open(fileobj=data_buf, mode="w:gz", format=tarfile.GNU_FORMAT) as dtar:
+        for dpath in (
+            "./opt",
+            "./opt/opendeskcast",
+            "./usr",
+            "./usr/bin",
+            "./usr/share",
+            "./usr/share/applications",
+            "./usr/share/icons",
+            "./usr/share/icons/hicolor",
+            "./usr/share/icons/hicolor/256x256",
+            "./usr/share/icons/hicolor/256x256/apps",
+        ):
+            dinfo = tarfile.TarInfo(dpath)
+            dinfo.type = tarfile.DIRTYPE
+            dinfo.mode = 0o755
+            dinfo.mtime = int(time.time())
+            dinfo.uid = 0
+            dinfo.gid = 0
+            dinfo.uname = "root"
+            dinfo.gname = "root"
+            dtar.addfile(dinfo)
+
+        launcher = b'#!/bin/sh\nexec /opt/opendeskcast/OpenDeskCast "$@"\n'
+        linfo = tarfile.TarInfo("./usr/bin/opendeskcast")
+        linfo.size = len(launcher)
+        linfo.mode = 0o755
+        linfo.mtime = int(time.time())
+        linfo.uid = 0
+        linfo.gid = 0
+        linfo.uname = "root"
+        linfo.gname = "root"
+        dtar.addfile(linfo, io.BytesIO(launcher))
+
+        desktop_bytes = """[Desktop Entry]
+Version=1.0
+Type=Application
+Name=OpenDeskCast
+GenericName=Desktop Screen Casting
+Comment=Trasmetti lo schermo del PC a qualsiasi smartphone, tablet o browser locale
+Exec=/usr/bin/opendeskcast
+Icon=opendeskcast
+Terminal=false
+Categories=Network;AudioVideo;Utility;
+StartupWMClass=opendeskcast
+Keywords=cast;screen;stream;mirror;desktop;
+""".encode("utf-8")
+        dentry = tarfile.TarInfo("./usr/share/applications/opendeskcast.desktop")
+        dentry.size = len(desktop_bytes)
+        dentry.mode = 0o644
+        dentry.mtime = int(time.time())
+        dentry.uid = 0
+        dentry.gid = 0
+        dentry.uname = "root"
+        dentry.gname = "root"
+        dtar.addfile(dentry, io.BytesIO(desktop_bytes))
+
+        icon_p = static_dir / "icon.png"
+        if icon_p.exists():
+            icon_bytes = icon_p.read_bytes()
+            icinfo = tarfile.TarInfo("./usr/share/icons/hicolor/256x256/apps/opendeskcast.png")
+            icinfo.size = len(icon_bytes)
+            icinfo.mode = 0o644
+            icinfo.mtime = int(time.time())
+            icinfo.uid = 0
+            icinfo.gid = 0
+            icinfo.uname = "root"
+            icinfo.gname = "root"
+            dtar.addfile(icinfo, io.BytesIO(icon_bytes))
+
+        with tarfile.open(tar_path, "r:gz") as src_tar:
+            for m in src_tar.getmembers():
+                parts = m.name.split("/", 1)
+                rel_name = parts[1] if len(parts) > 1 else ""
+                if not rel_name:
+                    continue
+                target_arcname = f"./opt/opendeskcast/{rel_name}"
+
+                is_updated_static = False
+                for sname in ("client.js", "index.html", "style.css"):
+                    if rel_name.endswith(f"static/{sname}"):
+                        local_f = static_dir / sname
+                        if local_f.exists():
+                            updated_bytes = local_f.read_bytes()
+                            new_ti = tarfile.TarInfo(target_arcname)
+                            new_ti.size = len(updated_bytes)
+                            new_ti.mode = 0o644
+                            new_ti.mtime = int(time.time())
+                            new_ti.uid = 0
+                            new_ti.gid = 0
+                            new_ti.uname = "root"
+                            new_ti.gname = "root"
+                            dtar.addfile(new_ti, io.BytesIO(updated_bytes))
+                            is_updated_static = True
+                            break
+                if is_updated_static:
+                    continue
+
+                m.name = target_arcname
+                m.uid = 0
+                m.gid = 0
+                m.uname = "root"
+                m.gname = "root"
+                if m.isreg():
+                    f_obj = src_tar.extractfile(m)
+                    dtar.addfile(m, f_obj)
+                else:
+                    dtar.addfile(m)
+
+    data_data = data_buf.getvalue()
+
+    create_ar_archive(
+        out_deb,
+        [
+            ("debian-binary", deb_binary),
+            ("control.tar.gz", control_data),
+            ("data.tar.gz", data_data),
+        ],
+    )
+
+
 def build_deb() -> Path:
     version = read_version()
     deb_filename = f"opendeskcast_{version}_amd64.deb"
     out_deb = DIST_DIR / deb_filename
+    linux_tar = DIST_DIR / f"OpenDeskCast-v{version}-linux-x64.tar.gz"
+
+    print(f"=== [DEB] Creazione pacchetto nativo Debian/Ubuntu {deb_filename} ===")
+
+    if sys.platform == "win32" and linux_tar.is_file():
+        print(f"[deb] Windows host: creazione diretta da archivio Linux {linux_tar.name}...")
+        build_deb_from_tar(linux_tar, out_deb, version)
+        print(f"[deb] Pacchetto Debian/Ubuntu creato con successo: {out_deb} ({out_deb.stat().st_size // 1024} KB)")
+        return out_deb
 
     if not SOURCE_DIR.is_dir():
         raise RuntimeError(f"Cartella sorgente {SOURCE_DIR} non trovata. Esegui prima scripts/build_package.py.")
-
-    print(f"=== [DEB] Creazione pacchetto nativo Debian/Ubuntu {deb_filename} ===")
 
     if sys.platform != "win32":
         deb_build_dir = Path("/tmp/opendeskcast_deb_build")
