@@ -33,6 +33,13 @@ OpenDeskCast è un'applicazione open source multipiattaforma (Windows, Linux, ma
 
 *(In alternativa, per avvio rapido da sorgente su qualsiasi distribuzione Linux: `./run_linux.sh`)*
 
+### macOS
+1. Scarica l'immagine disco **`OpenDeskCast-v1.0.0-macos.dmg`** (o `.zip`) dalla pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases).
+2. Apri il file `.dmg` e trascina **OpenDeskCast** nella cartella **Applicazioni**.
+3. Avvia **OpenDeskCast** dal Launchpad o da Applicazioni.
+
+*(In alternativa, per avvio rapido da sorgente su macOS: `./run_macos.sh`)*
+
 ---
 
 ## Licenza / License

@@ -403,7 +403,11 @@ class AudioDeviceManager:
             except Exception:
                 pass
         elif sys.platform == "darwin":
-            self._is_routed = True
+            try:
+                subprocess.run(["osascript", "-e", "set volume output muted true"], timeout=2)
+                self._is_routed = True
+            except Exception:
+                self._is_routed = True
 
     def restore_audio(self) -> None:
         if not self._is_routed:
@@ -428,6 +432,11 @@ class AudioDeviceManager:
                     subprocess.run(["pactl", "set-default-sink", self._linux_orig_sink], timeout=2)
                 if self._linux_module_id:
                     subprocess.run(["pactl", "unload-module", self._linux_module_id], timeout=3)
+            except Exception:
+                pass
+        elif sys.platform == "darwin":
+            try:
+                subprocess.run(["osascript", "-e", "set volume output muted false"], timeout=2)
             except Exception:
                 pass
 

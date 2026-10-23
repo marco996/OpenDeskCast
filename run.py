@@ -102,7 +102,20 @@ def _open_pc_control_window(port: int) -> None:
         except Exception:
             pass
 
-    # 3. On Linux, try xdg-open with clean environment
+    # 3. On macOS, try open with clean environment
+    if sys.platform == "darwin" and shutil.which("open"):
+        try:
+            subprocess.Popen(
+                ["open", admin_url],
+                env=clean_env,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return
+        except Exception:
+            pass
+
+    # 4. On Linux, try xdg-open with clean environment
     if shutil.which("xdg-open"):
         try:
             subprocess.Popen(
@@ -115,7 +128,7 @@ def _open_pc_control_window(port: int) -> None:
         except Exception:
             pass
 
-    # 4. Fallback to standard Python webbrowser with clean env
+    # 5. Fallback to standard Python webbrowser with clean env
     old_ld = os.environ.get("LD_LIBRARY_PATH")
     try:
         if "LD_LIBRARY_PATH" in os.environ:

@@ -55,6 +55,30 @@ def run_step(cmd: list[str], cwd: Path = ROOT) -> None:
     subprocess.run(cmd, cwd=str(cwd), check=True)
 
 
+def _patch_macos_plist(plist_path: Path, version: str) -> None:
+    import plistlib
+    try:
+        with open(plist_path, "rb") as f:
+            pl = plistlib.load(f)
+        pl["CFBundleName"] = "OpenDeskCast"
+        pl["CFBundleDisplayName"] = "OpenDeskCast"
+        pl["CFBundleIdentifier"] = "com.opendeskcast.app"
+        pl["CFBundleShortVersionString"] = version
+        pl["CFBundleVersion"] = version
+        pl["CFBundleIconFile"] = "icon.icns"
+        pl["NSHighResolutionCapable"] = True
+        pl["NSScreenCaptureUsageDescription"] = (
+            "OpenDeskCast richiede l'accesso alla registrazione dello schermo per trasmettere il display ai tuoi dispositivi."
+        )
+        pl["NSMicrophoneUsageDescription"] = (
+            "OpenDeskCast richiede l'accesso all'audio per trasmettere l'audio del computer."
+        )
+        with open(plist_path, "wb") as f:
+            plistlib.dump(pl, f)
+    except Exception as e:
+        print(f"[build] Warning: could not patch Info.plist: {e}")
+
+
 def build() -> Path:
     version = read_version()
     print(f"=== Building OpenDeskCast v{version} for {sys.platform} ===")
@@ -63,6 +87,11 @@ def build() -> Path:
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     if sys.platform == "win32":
         for sub in ("OpenDeskCast", "OpenDeskCastEngine"):
+            p = DIST_DIR / sub
+            if p.exists():
+                shutil.rmtree(p)
+    elif sys.platform == "darwin":
+        for sub in ("OpenDeskCast.app", "OpenDeskCast-macos", "OpenDeskCast"):
             p = DIST_DIR / sub
             if p.exists():
                 shutil.rmtree(p)
@@ -97,6 +126,14 @@ def build() -> Path:
 
     if sys.platform == "win32":
         pyi_cmd.extend(["--collect-submodules", "comtypes"])
+    elif sys.platform == "darwin":
+        pyi_cmd.extend([
+            "--windowed",
+            "--osx-bundle-identifier",
+            "com.opendeskcast.app",
+        ])
+        if (ROOT / "opendeskcast.icns").is_file():
+            pyi_cmd.extend(["--icon", str(ROOT / "opendeskcast.icns")])
     else:
         pyi_cmd.extend(["--distpath", str(DIST_DIR / "linux_tmp")])
 
@@ -142,10 +179,76 @@ def build() -> Path:
         if root_engine.exists():
             shutil.rmtree(root_engine)
         shutil.copytree(target_engine, root_engine)
+
+        shutil.copytree(ROOT / "static", pkg_root / "static", dirs_exist_ok=True)
+        if (ROOT / "drivers").exists():
+            shutil.copytree(ROOT / "drivers", pkg_root / "drivers", dirs_exist_ok=True)
+        if (ROOT / "VERSION").is_file():
+            shutil.copy2(ROOT / "VERSION", pkg_root / "VERSION")
+        for doc_file in ("LICENSE", "README.md", "opendeskcast.ico"):
+            src_doc = ROOT / doc_file
+            if src_doc.is_file():
+                shutil.copy2(src_doc, pkg_root / doc_file)
+
+        archive_base = DIST_DIR / f"OpenDeskCast-v{version}-windows-x64"
+        archive_path = Path(shutil.make_archive(str(archive_base), "zip", root_dir=DIST_DIR, base_dir="OpenDeskCast"))
+        try:
+            from scripts.build_msi import build_msi
+            build_msi()
+        except Exception as e:
+            print(f"[build] Skip MSI build: {e}")
+
     elif sys.platform == "darwin":
-        pkg_root = DIST_DIR / "OpenDeskCast-macos"
-        if (DIST_DIR / "OpenDeskCast").exists():
-            shutil.move(str(DIST_DIR / "OpenDeskCast"), str(pkg_root))
+        app_bundle = DIST_DIR / "OpenDeskCast.app"
+        if not app_bundle.exists() and (DIST_DIR / "OpenDeskCast" / "OpenDeskCast.app").exists():
+            shutil.move(str(DIST_DIR / "OpenDeskCast" / "OpenDeskCast.app"), str(app_bundle))
+
+        info_plist = app_bundle / "Contents" / "Info.plist"
+        if info_plist.is_file():
+            _patch_macos_plist(info_plist, version)
+
+        res_dir = app_bundle / "Contents" / "Resources"
+        res_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(ROOT / "static", res_dir / "static", dirs_exist_ok=True)
+        if (ROOT / "opendeskcast.icns").is_file():
+            shutil.copy2(ROOT / "opendeskcast.icns", res_dir / "icon.icns")
+            shutil.copy2(ROOT / "opendeskcast.icns", res_dir / "OpenDeskCast.icns")
+
+        # 1. Build .zip preserving symlinks
+        archive_base = DIST_DIR / f"OpenDeskCast-v{version}-macos"
+        if shutil.which("zip"):
+            subprocess.run(["zip", "-r", "-y", f"{archive_base}.zip", "OpenDeskCast.app"], cwd=str(DIST_DIR), check=True)
+            archive_path = Path(f"{archive_base}.zip")
+        else:
+            archive_path = Path(shutil.make_archive(str(archive_base), "zip", root_dir=DIST_DIR, base_dir="OpenDeskCast.app"))
+
+        # 2. Build .dmg disk image with hdiutil
+        hdiutil = shutil.which("hdiutil")
+        if hdiutil and app_bundle.exists():
+            dmg_path = DIST_DIR / f"OpenDeskCast-v{version}-macos.dmg"
+            dmg_stage = BUILD_DIR / "dmg_stage"
+            if dmg_stage.exists():
+                shutil.rmtree(dmg_stage)
+            dmg_stage.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(app_bundle, dmg_stage / "OpenDeskCast.app", symlinks=True)
+            try:
+                os.symlink("/Applications", str(dmg_stage / "Applications"))
+            except Exception:
+                pass
+            try:
+                run_step([
+                    hdiutil,
+                    "create",
+                    "-volname", "OpenDeskCast",
+                    "-srcfolder", str(dmg_stage),
+                    "-ov",
+                    "-format", "UDZO",
+                    str(dmg_path)
+                ])
+                print(f"[build] macOS DMG created: {dmg_path} ({dmg_path.stat().st_size // 1024} KB)")
+            except Exception as e:
+                print(f"[build] Skip DMG creation: {e}")
+
     else:
         pkg_root = DIST_DIR / "OpenDeskCast-linux"
         if pkg_root.exists():
@@ -158,29 +261,14 @@ def build() -> Path:
         if (DIST_DIR / "linux_tmp").exists():
             shutil.rmtree(DIST_DIR / "linux_tmp")
 
-    shutil.copytree(ROOT / "static", pkg_root / "static", dirs_exist_ok=True)
-    if (ROOT / "drivers").exists() and sys.platform == "win32":
-        shutil.copytree(ROOT / "drivers", pkg_root / "drivers", dirs_exist_ok=True)
-    if (ROOT / "VERSION").is_file():
-        shutil.copy2(ROOT / "VERSION", pkg_root / "VERSION")
+        shutil.copytree(ROOT / "static", pkg_root / "static", dirs_exist_ok=True)
+        if (ROOT / "VERSION").is_file():
+            shutil.copy2(ROOT / "VERSION", pkg_root / "VERSION")
+        for doc_file in ("LICENSE", "README.md", "opendeskcast.ico"):
+            src_doc = ROOT / doc_file
+            if src_doc.is_file():
+                shutil.copy2(src_doc, pkg_root / doc_file)
 
-    for doc_file in ("LICENSE", "README.md", "opendeskcast.ico"):
-        src_doc = ROOT / doc_file
-        if src_doc.is_file():
-            shutil.copy2(src_doc, pkg_root / doc_file)
-
-    if sys.platform == "win32":
-        archive_base = DIST_DIR / f"OpenDeskCast-v{version}-windows-x64"
-        archive_path = Path(shutil.make_archive(str(archive_base), "zip", root_dir=DIST_DIR, base_dir="OpenDeskCast"))
-        try:
-            from scripts.build_msi import build_msi
-            build_msi()
-        except Exception as e:
-            print(f"[build] Skip MSI build: {e}")
-    elif sys.platform == "darwin":
-        archive_base = DIST_DIR / f"OpenDeskCast-v{version}-macos"
-        archive_path = Path(shutil.make_archive(str(archive_base), "zip", root_dir=DIST_DIR, base_dir="OpenDeskCast"))
-    else:
         archive_base = DIST_DIR / f"OpenDeskCast-v{version}-linux-x64"
         archive_path = Path(shutil.make_archive(str(archive_base), "gztar", root_dir=DIST_DIR, base_dir="OpenDeskCast-linux"))
         try:
