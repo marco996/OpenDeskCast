@@ -75,7 +75,7 @@ def _open_pc_control_window(port: int) -> None:
             if sys.platform != "win32":
                 cmd.extend([
                     "--no-sandbox",
-                    "--disable-gpu-sandbox",
+                    "--test-type",
                     "--user-data-dir=/tmp/opendeskcast-app-profile",
                 ])
             try:
