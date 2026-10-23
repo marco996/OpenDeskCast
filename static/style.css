@@ -284,6 +284,12 @@ html, body {
   color: #fff;
 }
 
+.control-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .control-row-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;

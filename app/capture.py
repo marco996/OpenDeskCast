@@ -479,3 +479,17 @@ class ScreenCapturer:
 
         header = struct.pack("<HHHH", target_w, target_h, patch_x, patch_y)
         return header + encoded.tobytes()
+
+    def encode_black_frame(self, monitor_id: int = 0, scale: float = 1.0) -> bytes:
+        """Encode a full black frame for the given monitor to preserve privacy when sharing is paused."""
+        mon = self._resolve_monitor(monitor_id)
+        scale_clamped = max(0.25, min(1.0, float(scale)))
+        target_w = max(64, int(round(mon["width"] * scale_clamped))) if scale_clamped < 0.99 else int(mon["width"])
+        target_h = max(64, int(round(mon["height"] * scale_clamped))) if scale_clamped < 0.99 else int(mon["height"])
+        black_img = np.zeros((target_h, target_w, 3), dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpg", black_img, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
+        if not ok:
+            return b""
+        header = struct.pack("<HHHH", target_w, target_h, 0, 0)
+        self._prev_bgr = None
+        return header + encoded.tobytes()

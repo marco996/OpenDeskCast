@@ -28,6 +28,9 @@ if sys.platform == "win32":
 
         CLSID_MMDeviceEnumerator = GUID("{BCDE0395-E52F-467C-8E3D-C4579291692E}")
         IID_IMMDeviceEnumerator = GUID("{A95664D2-9614-4F35-A746-DE8DB63617E6}")
+        IID_IMMDeviceCollection = GUID("{0BD7A1BE-7A1A-44DB-8397-CC5392387B5E}")
+        IID_IMMDevice = GUID("{D666063F-1587-4E43-81F1-B948E807363F}")
+        IID_IPropertyStore = GUID("{886d8eeb-8cf2-4446-8d02-cdba1dbdcf99}")
         IID_IAudioClient = GUID("{1CB9AD4C-DBFA-4c32-B178-C2F568A703B2}")
         IID_IAudioCaptureClient = GUID("{C8ADBD64-E71E-48a0-A4DE-185C395CD317}")
         IID_IAudioEndpointVolume = GUID("{5CDF2C82-841E-4546-9722-0CF74078229A}")
@@ -35,8 +38,38 @@ if sys.platform == "win32":
         eRender = 0
         eConsole = 0
         CLSCTX_ALL = 23
+        STGM_READ = 0
+        DEVICE_STATE_ACTIVE = 0x00000001
         AUDCLNT_SHAREMODE_SHARED = 0
         AUDCLNT_STREAMFLAGS_LOOPBACK = 0x00020000
+
+        class PROPERTYKEY(Structure):
+            _fields_ = [
+                ("fmtid", GUID),
+                ("pid", wintypes.DWORD),
+            ]
+
+        PKEY_Device_FriendlyName = PROPERTYKEY(GUID("{a45c254e-df1c-4efd-8020-67d146a850e0}"), 14)
+
+        class PROPVARIANT(Structure):
+            _fields_ = [
+                ("vt", ctypes.c_ushort),
+                ("wReserved1", wintypes.WORD),
+                ("wReserved2", wintypes.WORD),
+                ("wReserved3", wintypes.WORD),
+                ("pwszVal", wintypes.LPWSTR),
+                ("dummy", wintypes.DWORD),
+            ]
+
+        class IPropertyStore(IUnknown):
+            _iid_ = IID_IPropertyStore
+            _methods_ = [
+                COMMETHOD([], HRESULT, "GetCount", (["out"], POINTER(wintypes.DWORD), "cProps")),
+                COMMETHOD([], HRESULT, "GetAt", (["in"], wintypes.DWORD, "iProp"), (["out"], POINTER(PROPERTYKEY), "pkey")),
+                COMMETHOD([], HRESULT, "GetValue", (["in"], POINTER(PROPERTYKEY), "key"), (["out", "retval"], POINTER(PROPVARIANT), "pv")),
+                COMMETHOD([], HRESULT, "SetValue"),
+                COMMETHOD([], HRESULT, "Commit"),
+            ]
 
         class WAVEFORMATEX(Structure):
             _fields_ = [
@@ -61,12 +94,35 @@ if sys.platform == "win32":
                     (["in"], c_void_p, "pActivationParams"),
                     (["out"], POINTER(POINTER(IUnknown)), "ppInterface"),
                 ),
+                COMMETHOD(
+                    [],
+                    HRESULT,
+                    "OpenPropertyStore",
+                    (["in"], wintypes.DWORD, "stgmAccess"),
+                    (["out"], POINTER(POINTER(IPropertyStore)), "ppProperties"),
+                ),
+                COMMETHOD([], HRESULT, "GetId", (["out"], POINTER(wintypes.LPWSTR), "ppstrId")),
+                COMMETHOD([], HRESULT, "GetState", (["out"], POINTER(wintypes.DWORD), "pdwState")),
+            ]
+
+        class IMMDeviceCollection(IUnknown):
+            _iid_ = IID_IMMDeviceCollection
+            _methods_ = [
+                COMMETHOD([], HRESULT, "GetCount", (["out"], POINTER(wintypes.UINT), "pcDevices")),
+                COMMETHOD([], HRESULT, "Item", (["in"], wintypes.UINT, "nDevice"), (["out"], POINTER(POINTER(IMMDevice)), "ppDevice")),
             ]
 
         class IMMDeviceEnumerator(IUnknown):
             _iid_ = IID_IMMDeviceEnumerator
             _methods_ = [
-                COMMETHOD([], HRESULT, "EnumAudioEndpoints"),
+                COMMETHOD(
+                    [],
+                    HRESULT,
+                    "EnumAudioEndpoints",
+                    (["in"], wintypes.DWORD, "dataFlow"),
+                    (["in"], wintypes.DWORD, "dwStateMask"),
+                    (["out"], POINTER(POINTER(IMMDeviceCollection)), "ppDevices"),
+                ),
                 COMMETHOD(
                     [],
                     HRESULT,
@@ -74,6 +130,13 @@ if sys.platform == "win32":
                     (["in"], wintypes.DWORD, "dataFlow"),
                     (["in"], wintypes.DWORD, "role"),
                     (["out"], POINTER(POINTER(IMMDevice)), "ppEndpoint"),
+                ),
+                COMMETHOD(
+                    [],
+                    HRESULT,
+                    "GetDevice",
+                    (["in"], wintypes.LPCWSTR, "pwstrId"),
+                    (["out"], POINTER(POINTER(IMMDevice)), "ppDevice"),
                 ),
             ]
 
@@ -184,42 +247,20 @@ else:
 
 
 class AudioDeviceManager:
-    """Manages muting physical PC speakers while casting and restoring them when finished."""
+    """Manages audio sink routing on Linux/macOS while keeping PC speakers unmuted on Windows."""
 
     def __init__(self) -> None:
         self._is_routed = False
-        self._orig_mute_state: bool | None = None
         self._linux_module_id: str | None = None
         self._linux_orig_sink: str | None = None
         atexit.register(self.restore_audio)
 
     def route_audio_to_cast(self) -> None:
-        """Silence physical speakers on PC so sound only goes to the cast."""
-        if sys.platform == "win32" and _WASAPI_AVAILABLE:
-            try:
-                comtypes.CoInitialize()
-                enumerator = comtypes.client.CreateObject(
-                    CLSID_MMDeviceEnumerator, interface=IMMDeviceEnumerator
-                )
-                device = enumerator.GetDefaultAudioEndpoint(eRender, eConsole)
-                vol_ptr = device.Activate(byref(IID_IAudioEndpointVolume), CLSCTX_ALL, None)
-                vol = vol_ptr.QueryInterface(IAudioEndpointVolume)
-                current_mute = bool(vol.GetMute())
-                if not self._is_routed:
-                    self._orig_mute_state = current_mute
-                if not current_mute:
-                    vol.SetMute(True, None)
-                self._is_routed = True
-            except Exception:
-                pass
-            finally:
-                try:
-                    comtypes.CoUninitialize()
-                except Exception:
-                    pass
+        if self._is_routed:
+            return
+        if sys.platform == "win32":
+            self._is_routed = True
         elif sys.platform.startswith("linux"):
-            if self._is_routed:
-                return
             try:
                 res = subprocess.run(
                     ["pactl", "get-default-sink"], capture_output=True, text=True, timeout=2
@@ -252,38 +293,13 @@ class AudioDeviceManager:
             except Exception:
                 pass
         elif sys.platform == "darwin":
-            if self._is_routed:
-                return
-            try:
-                subprocess.run(["osascript", "-e", "set volume output muted true"], timeout=2)
-                self._is_routed = True
-            except Exception:
-                pass
+            self._is_routed = True
 
     def restore_audio(self) -> None:
-        """Unmute physical PC speakers so sound is heard locally again."""
         if not self._is_routed:
             return
         self._is_routed = False
-        if sys.platform == "win32" and _WASAPI_AVAILABLE:
-            try:
-                comtypes.CoInitialize()
-                enumerator = comtypes.client.CreateObject(
-                    CLSID_MMDeviceEnumerator, interface=IMMDeviceEnumerator
-                )
-                device = enumerator.GetDefaultAudioEndpoint(eRender, eConsole)
-                vol_ptr = device.Activate(byref(IID_IAudioEndpointVolume), CLSCTX_ALL, None)
-                vol = vol_ptr.QueryInterface(IAudioEndpointVolume)
-                target_mute = self._orig_mute_state if self._orig_mute_state is not None else False
-                vol.SetMute(target_mute, None)
-            except Exception:
-                pass
-            finally:
-                try:
-                    comtypes.CoUninitialize()
-                except Exception:
-                    pass
-        elif sys.platform.startswith("linux"):
+        if sys.platform.startswith("linux"):
             try:
                 if self._linux_orig_sink:
                     subprocess.run(["pactl", "set-default-sink", self._linux_orig_sink], timeout=2)
@@ -291,20 +307,21 @@ class AudioDeviceManager:
                     subprocess.run(["pactl", "unload-module", self._linux_module_id], timeout=3)
             except Exception:
                 pass
-        elif sys.platform == "darwin":
-            try:
-                subprocess.run(["osascript", "-e", "set volume output muted false"], timeout=2)
-            except Exception:
-                pass
 
 
 class _WasapiLoopbackWorker(threading.Thread):
-    """Background worker capturing default Windows render output using native WASAPI Loopback."""
+    """Background worker capturing selected Windows render output using native WASAPI Loopback."""
 
-    def __init__(self, callback: Callable[[bytes], None], sample_rate: int = SAMPLE_RATE) -> None:
+    def __init__(
+        self,
+        callback: Callable[[bytes], None],
+        sample_rate: int = SAMPLE_RATE,
+        device_id: str = "default",
+    ) -> None:
         super().__init__(name="WasapiLoopbackWorker", daemon=True)
         self.callback = callback
         self.sample_rate = sample_rate
+        self.device_id = str(device_id or "default")
         self.stop_event = threading.Event()
 
     def run(self) -> None:
@@ -332,7 +349,14 @@ class _WasapiLoopbackWorker(threading.Thread):
                 enumerator = comtypes.client.CreateObject(
                     CLSID_MMDeviceEnumerator, interface=IMMDeviceEnumerator
                 )
-                device = enumerator.GetDefaultAudioEndpoint(eRender, eConsole)
+                if self.device_id and self.device_id != "default":
+                    try:
+                        device = enumerator.GetDevice(self.device_id)
+                    except Exception:
+                        device = enumerator.GetDefaultAudioEndpoint(eRender, eConsole)
+                else:
+                    device = enumerator.GetDefaultAudioEndpoint(eRender, eConsole)
+
                 client_ptr = device.Activate(byref(IID_IAudioClient), CLSCTX_ALL, None)
                 client = client_ptr.QueryInterface(IAudioClient)
 
@@ -482,12 +506,24 @@ class AudioStreamer:
     def __init__(self, sample_rate: int = SAMPLE_RATE, channels: int = CHANNELS) -> None:
         self.sample_rate = int(sample_rate)
         self.channels = int(channels)
+        self.device_id = "default"
         self._subscribers: Set[asyncio.Queue[bytes]] = set()
         self._worker: threading.Thread | None = None
         self._lock = threading.Lock()
         self._loop: asyncio.AbstractEventLoop | None = None
         self.device_manager = AudioDeviceManager()
         self._ffmpeg = shutil.which("ffmpeg")
+
+    def set_device(self, device_id: str) -> None:
+        with self._lock:
+            did = str(device_id or "default")
+            if self.device_id == did:
+                return
+            self.device_id = did
+            if self._worker is not None:
+                self._stop_worker()
+                if self._subscribers:
+                    self._start_worker()
 
     def _broadcast_chunk(self, chunk: bytes) -> None:
         if not self._subscribers or not self._loop or self._loop.is_closed():
@@ -515,10 +551,11 @@ class AudioStreamer:
             return
 
         if sys.platform == "win32":
-            self._worker = _WasapiLoopbackWorker(self._broadcast_chunk, self.sample_rate)
+            self._worker = _WasapiLoopbackWorker(self._broadcast_chunk, self.sample_rate, self.device_id)
             self._worker.start()
         elif sys.platform.startswith("linux"):
             parec = shutil.which("parec")
+            target_device = self.device_id if self.device_id != "default" else None
             if parec:
                 cmd = [
                     parec,
@@ -526,6 +563,8 @@ class AudioStreamer:
                     f"--rate={self.sample_rate}",
                     f"--channels={self.channels}",
                 ]
+                if target_device:
+                    cmd.extend(["-d", f"{target_device}.monitor"])
                 self._worker = _SubprocessAudioWorker(cmd, self._broadcast_chunk)
                 self._worker.start()
             elif self._ffmpeg:
@@ -535,7 +574,7 @@ class AudioStreamer:
                     "-f",
                     "pulse",
                     "-i",
-                    "default",
+                    f"{target_device}.monitor" if target_device else "default",
                     "-ac",
                     str(self.channels),
                     "-ar",
@@ -547,7 +586,7 @@ class AudioStreamer:
                 self._worker = _SubprocessAudioWorker(cmd, self._broadcast_chunk)
                 self._worker.start()
             else:
-                self._worker = _WasapiLoopbackWorker(self._broadcast_chunk, self.sample_rate)
+                self._worker = _WasapiLoopbackWorker(self._broadcast_chunk, self.sample_rate, self.device_id)
                 self._worker.start()
         elif sys.platform == "darwin":
             if self._ffmpeg:
@@ -569,10 +608,10 @@ class AudioStreamer:
                 self._worker = _SubprocessAudioWorker(cmd, self._broadcast_chunk)
                 self._worker.start()
             else:
-                self._worker = _WasapiLoopbackWorker(self._broadcast_chunk, self.sample_rate)
+                self._worker = _WasapiLoopbackWorker(self._broadcast_chunk, self.sample_rate, self.device_id)
                 self._worker.start()
         else:
-            self._worker = _WasapiLoopbackWorker(self._broadcast_chunk, self.sample_rate)
+            self._worker = _WasapiLoopbackWorker(self._broadcast_chunk, self.sample_rate, self.device_id)
             self._worker.start()
 
     def _stop_worker(self) -> None:
@@ -613,47 +652,56 @@ class AudioStreamer:
             self._stop_worker()
             self.device_manager.restore_audio()
 
-    def list_audio_devices(self) -> list[str]:
-        """List available audio capture devices across Windows, Linux, and macOS."""
-        devices: list[str] = []
-        if sys.platform == "win32":
-            if _WASAPI_AVAILABLE:
-                devices.append("Audio to OpenDeskCast (Loopback di sistema)")
-        elif sys.platform.startswith("linux"):
-            devices.append("Audio to OpenDeskCast (Pulse/PipeWire)")
-        elif sys.platform == "darwin":
-            devices.append("Audio to OpenDeskCast (CoreAudio/AVFoundation)")
-
-        if self._ffmpeg and sys.platform == "win32":
+    def list_audio_devices(self) -> list[dict[str, str]]:
+        """List available audio render / output endpoints across Windows, Linux, and macOS."""
+        devices: list[dict[str, str]] = [{"id": "default", "name": "Dispositivo Predefinito (Default)"}]
+        if sys.platform == "win32" and _WASAPI_AVAILABLE:
             try:
-                proc = subprocess.run(
-                    [
-                        self._ffmpeg,
-                        "-hide_banner",
-                        "-list_devices",
-                        "true",
-                        "-f",
-                        "dshow",
-                        "-i",
-                        "dummy",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=3,
+                comtypes.CoInitialize()
+                enumerator = comtypes.client.CreateObject(
+                    CLSID_MMDeviceEnumerator, interface=IMMDeviceEnumerator
                 )
-                output = (proc.stderr or "") + "\n" + (proc.stdout or "")
-                for line in output.splitlines():
-                    if "(audio)" in line:
-                        match = re.search(r'"([^"]+)"', line)
-                        if match and match.group(1) not in devices:
-                            devices.append(match.group(1))
+                col = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)
+                count = col.GetCount()
+                for i in range(count):
+                    try:
+                        dev = col.Item(i)
+                        dev_id = str(dev.GetId())
+                        name = f"Uscita Audio {i + 1}"
+                        try:
+                            props_ptr = dev.OpenPropertyStore(STGM_READ)
+                            props = props_ptr.QueryInterface(IPropertyStore)
+                            pv = props.GetValue(byref(PKEY_Device_FriendlyName))
+                            if pv.vt == 31 and pv.pwszVal:
+                                name = str(pv.pwszVal)
+                        except Exception:
+                            pass
+                        devices.append({"id": dev_id, "name": name})
+                    except Exception:
+                        pass
             except Exception:
                 pass
-
-        if not devices:
-            devices.append("Audio to OpenDeskCast")
+            finally:
+                try:
+                    comtypes.CoUninitialize()
+                except Exception:
+                    pass
+        elif sys.platform.startswith("linux"):
+            try:
+                res = subprocess.run(
+                    ["pactl", "list", "short", "sinks"],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
+                if res.returncode == 0:
+                    for line in res.stdout.strip().splitlines():
+                        parts = line.split("\t")
+                        if len(parts) >= 2:
+                            sink_name = parts[1]
+                            devices.append({"id": sink_name, "name": sink_name})
+            except Exception:
+                pass
         return devices
 
     def pick_preferred_device(self, requested: str | None = None) -> str | None:

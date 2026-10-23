@@ -1,7 +1,7 @@
 (() => {
   const I18N = {
-    it: { name: "Italiano", setup: "Setup dispositivo", v1: "1 spettatore collegato", vN: "{0} spettatori collegati", qr: "QR Sicurezza Sessione", copied: "Link sicuro copiato!", rotate: "Rigenera QR / Disconnetti", src: "Sorgente", scr: "Schermo", pri: "Principale", sec: "Secondario", fps: "Fluidità", qual: "Qualità", scale: "Risoluzione", cur: "Mostra cursore del mouse", aud: "Trasmetti audio del PC", lock: "Blocca nuovi dispositivi (Rete Pubblica)", lockSub: "Impedisce nuovi collegamenti anche conoscendo l'IP" },
-    en: { name: "English", setup: "Device setup", v1: "1 viewer connected", vN: "{0} viewers connected", qr: "Session Security QR", copied: "Secure link copied!", rotate: "Regenerate QR / Disconnect", src: "Source", scr: "Screen", pri: "Primary", sec: "Secondary", fps: "Frame Rate", qual: "Quality", scale: "Resolution", cur: "Show mouse cursor", aud: "Stream PC audio", lock: "Block new devices (Public Network)", lockSub: "Prevents new connections even if IP is known" },
+    it: { name: "Italiano", setup: "Setup dispositivo", v1: "1 spettatore collegato", vN: "{0} spettatori collegati", qr: "QR Sicurezza Sessione", copied: "Link sicuro copiato!", rotate: "Rigenera QR / Disconnetti", src: "Schermo", audDev: "Uscita Audio", scr: "Schermo", pri: "Principale", sec: "Secondario", fps: "Fluidità", qual: "Qualità", scale: "Risoluzione", cur: "Mostra cursore del mouse", screenShare: "Condivisione schermo", screenSub: "Attiva: streaming desktop | Disattiva: schermo nero privacy", aud: "Trasmetti audio", audSubActive: "Invia l'uscita audio selezionata allo spettatore", audSubInactive: "Audio disattivato (silenzioso)", lock: "Blocca nuovi dispositivi (Rete Pubblica)", lockSub: "Impedisce nuovi collegamenti anche conoscendo l'IP" },
+    en: { name: "English", setup: "Device setup", v1: "1 viewer connected", vN: "{0} viewers connected", qr: "Session Security QR", copied: "Secure link copied!", rotate: "Regenerate QR / Disconnect", src: "Screen", audDev: "Audio Output", scr: "Screen", pri: "Primary", sec: "Secondary", fps: "Frame Rate", qual: "Quality", scale: "Resolution", cur: "Show mouse cursor", screenShare: "Screen sharing", screenSub: "Active: stream desktop | Inactive: privacy black screen", aud: "Stream audio", audSubActive: "Transmit selected audio output to viewer", audSubInactive: "Audio disabled (silent)", lock: "Block new devices (Public Network)", lockSub: "Prevents new connections even if IP is known" },
     es: { name: "Español", setup: "Configurar dispositivo", v1: "1 espectador conectado", vN: "{0} espectadores conectados", qr: "QR de Seguridad", copied: "¡Enlace copiado!", rotate: "Regenerar QR / Desconectar", src: "Fuente", scr: "Pantalla", pri: "Principal", sec: "Secundaria", fps: "Fluidez", qual: "Calidad", scale: "Resolución", cur: "Mostrar cursor del ratón", aud: "Transmitir audio del PC", lock: "Bloquear nuevos dispositivos (Red Pública)", lockSub: "Impide nuevas conexiones aunque conozcan la IP" },
     fr: { name: "Français", setup: "Config. appareil", v1: "1 spectateur connecté", vN: "{0} spectateurs connectés", qr: "QR de Sécurité", copied: "Lien sécurisé copié !", rotate: "Régénérer QR / Déconnecter", src: "Source", scr: "Écran", pri: "Principal", sec: "Secondaire", fps: "Fluidité", qual: "Qualité", scale: "Résolution", cur: "Afficher le curseur de la souris", aud: "Diffuser l'audio du PC", lock: "Bloquer les nouveaux appareils (Réseau Public)", "lockSub": "Empêche toute nouvelle connexion même avec l'IP" },
     de: { name: "Deutsch", setup: "Gerät einrichten", v1: "1 Zuschauer verbunden", vN: "{0} Zuschauer verbunden", qr: "Sitzungs-QR-Code", copied: "Link kopiert!", rotate: "QR erneuern / Trennen", src: "Quelle", scr: "Bildschirm", pri: "Primär", sec: "Sekundär", fps: "Bildrate", qual: "Qualität", scale: "Auflösung", cur: "Mauszeiger anzeigen", aud: "PC-Audio übertragen", lock: "Neue Geräte blockieren (Öffentliches Netz)", lockSub: "Verhindert neue Verbindungen trotz bekannter IP" },
@@ -43,9 +43,13 @@
   const helpBody = document.getElementById("help-body");
 
   const selMonitor = document.getElementById("sel-monitor");
+  const selAudioDevice = document.getElementById("sel-audio-device");
   const selFps = document.getElementById("sel-fps");
   const selQuality = document.getElementById("sel-quality");
   const selScale = document.getElementById("sel-scale");
+  const chkScreenSharing = document.getElementById("chk-screen-sharing");
+  const lblScreenSharing = document.getElementById("lbl-screen-sharing");
+  const lblScreenSub = document.getElementById("lbl-screen-sub");
   const chkCursor = document.getElementById("chk-cursor");
   const chkAudio = document.getElementById("chk-audio");
   const lblAudioSub = document.getElementById("lbl-audio-sub");
@@ -57,6 +61,7 @@
   if (!I18N[currentLang]) currentLang = "it";
   let lastCount = 0;
   let lastMonitors = [];
+  let lastAudioDevices = [];
   let lastPin = "----";
   let lastBaseIpUrl = "http://127.0.0.1:8765";
 
@@ -136,22 +141,46 @@
     });
   }
 
+  function renderAudioDeviceOptions(currentDevId) {
+    if (!selAudioDevice) return;
+    selAudioDevice.innerHTML = "";
+    if (!lastAudioDevices || lastAudioDevices.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "default";
+      opt.textContent = "Predefinito (Default)";
+      selAudioDevice.appendChild(opt);
+      return;
+    }
+    lastAudioDevices.forEach((d) => {
+      const opt = document.createElement("option");
+      opt.value = String(d.id);
+      opt.textContent = d.name;
+      if (d.id === currentDevId) opt.selected = true;
+      selAudioDevice.appendChild(opt);
+    });
+  }
+
   function applyTranslations() {
     const dict = t();
     document.getElementById("lbl-qr-title").textContent = dict.qr;
     btnRotateToken.textContent = dict.rotate;
-    document.getElementById("lbl-source").textContent = dict.src;
+    document.getElementById("lbl-source").textContent = dict.src || "Schermo";
+    const lblAudDev = document.getElementById("lbl-audio-device");
+    if (lblAudDev) lblAudDev.textContent = dict.audDev || "Uscita Audio";
     document.getElementById("lbl-fps").textContent = dict.fps;
     document.getElementById("lbl-quality").textContent = dict.qual;
     document.getElementById("lbl-scale").textContent = dict.scale;
+    if (lblScreenSharing) lblScreenSharing.textContent = dict.screenShare || "Condivisione schermo";
+    if (lblScreenSub) lblScreenSub.textContent = dict.screenSub || "Attiva: streaming desktop | Disattiva: schermo nero privacy";
     document.getElementById("lbl-cursor").textContent = dict.cur;
-    document.getElementById("lbl-audio").textContent = dict.aud;
+    document.getElementById("lbl-audio").textContent = dict.aud || "Trasmetti audio";
     document.getElementById("lbl-lock").textContent = dict.lock;
     document.getElementById("lbl-lock-sub").textContent = dict.lockSub;
     updateAudioSub();
     updateViewersBadge(lastCount);
     const curMon = parseInt(selMonitor.value, 10) || 0;
     renderMonitorOptions(curMon);
+    renderAudioDeviceOptions(selAudioDevice ? selAudioDevice.value : "default");
     renderHelpContent();
   }
 
@@ -180,16 +209,12 @@
 
   function updateAudioSub() {
     if (!lblAudioSub) return;
-    const isIt = currentLang === "it";
+    const dict = t();
     if (chkAudio.checked) {
-      lblAudioSub.textContent = isIt
-        ? "Dispositivo: Audio to OpenDeskCast (PC silenziato)"
-        : "Device: Audio to OpenDeskCast (PC muted)";
+      lblAudioSub.textContent = dict.audSubActive || "Invia l'uscita audio selezionata allo spettatore";
       lblAudioSub.style.color = "#6ccb5f";
     } else {
-      lblAudioSub.textContent = isIt
-        ? "Dispositivo: Altoparlanti PC (Cast disattivato)"
-        : "Device: Local PC Speakers (Cast inactive)";
+      lblAudioSub.textContent = dict.audSubInactive || "Audio disattivato (silenzioso)";
       lblAudioSub.style.color = "#9e9e9e";
     }
   }
@@ -219,9 +244,13 @@
       lastMonitors = data.monitors || [];
       renderMonitorOptions(data.settings.monitor_id);
 
+      lastAudioDevices = data.audio_devices || [];
+      renderAudioDeviceOptions(data.settings.audio_device_id || "default");
+
       selFps.value = String(data.settings.fps);
       selQuality.value = String(data.settings.quality);
       selScale.value = String(data.settings.scale);
+      if (chkScreenSharing) chkScreenSharing.checked = Boolean(data.settings.screen_sharing_enabled !== false);
       chkCursor.checked = Boolean(data.settings.draw_cursor);
       chkAudio.checked = Boolean(data.settings.audio_enabled);
       chkLock.checked = Boolean(data.settings.lock_new_viewers);
@@ -236,9 +265,11 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           monitor_id: parseInt(selMonitor.value, 10) || 0,
+          audio_device_id: selAudioDevice ? selAudioDevice.value : "default",
           fps: parseInt(selFps.value, 10) || 30,
-          quality: parseInt(selQuality.value, 10) || 75,
+          quality: parseInt(selQuality.value, 10) || 80,
           scale: parseFloat(selScale.value) || 1.0,
+          screen_sharing_enabled: chkScreenSharing ? chkScreenSharing.checked : true,
           draw_cursor: chkCursor.checked,
           audio_enabled: chkAudio.checked,
           lock_new_viewers: chkLock.checked,
@@ -267,9 +298,11 @@
   });
 
   selMonitor.addEventListener("change", pushSettings);
+  if (selAudioDevice) selAudioDevice.addEventListener("change", pushSettings);
   selFps.addEventListener("change", pushSettings);
   selQuality.addEventListener("change", pushSettings);
   selScale.addEventListener("change", pushSettings);
+  if (chkScreenSharing) chkScreenSharing.addEventListener("change", pushSettings);
   chkCursor.addEventListener("change", pushSettings);
   chkAudio.addEventListener("change", () => {
     updateAudioSub();

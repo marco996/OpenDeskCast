@@ -41,13 +41,21 @@
 
       <!-- Colonna Destra: Controlli Windows 11 Fluent -->
       <section class="fluent-card fluent-controls-card">
-        <!-- Riga 1: Sorgente -->
-        <div class="control-group-full">
-          <div class="field-header">
-            <label for="sel-monitor" id="lbl-source">Sorgente</label>
-            <button id="btn-refresh" class="icon-btn" title="Refresh">↻</button>
+        <!-- Riga 1: Sorgente Schermo & Uscita Audio -->
+        <div class="control-row-2">
+          <div class="control-col">
+            <div class="field-header">
+              <label for="sel-monitor" id="lbl-source">Schermo</label>
+            </div>
+            <select id="sel-monitor" class="fluent-select"></select>
           </div>
-          <select id="sel-monitor" class="fluent-select"></select>
+          <div class="control-col">
+            <div class="field-header">
+              <label for="sel-audio-device" id="lbl-audio-device">Uscita Audio</label>
+              <button id="btn-refresh" class="icon-btn" title="Refresh">↻</button>
+            </div>
+            <select id="sel-audio-device" class="fluent-select"></select>
+          </div>
         </div>
 
         <!-- Riga 2: FPS, Qualità, Scala -->
@@ -85,8 +93,17 @@
 
         <div class="fluent-divider"></div>
 
-        <!-- Riga 3, 4, 5: Switch Moderni Windows 11 -->
+        <!-- Riga 3, 4, 5, 6: Switch Moderni Windows 11 -->
         <div class="switches-stack">
+          <label class="switch-row">
+            <div class="switch-text">
+              <span class="switch-title" id="lbl-screen-sharing">Condivisione schermo</span>
+              <span class="switch-sub" id="lbl-screen-sub">Attiva: streaming desktop | Disattiva: schermo nero per privacy</span>
+            </div>
+            <input type="checkbox" id="chk-screen-sharing" checked />
+            <span class="fluent-toggle"></span>
+          </label>
+
           <label class="switch-row">
             <div class="switch-text">
               <span class="switch-title" id="lbl-cursor">Mostra cursore del mouse</span>
@@ -97,8 +114,8 @@
 
           <label class="switch-row">
             <div class="switch-text">
-              <span class="switch-title" id="lbl-audio">Trasmetti audio del PC</span>
-              <span class="switch-sub" id="lbl-audio-sub">Dispositivo: Audio to OpenDeskCast (PC silenziato)</span>
+              <span class="switch-title" id="lbl-audio">Trasmetti audio</span>
+              <span class="switch-sub" id="lbl-audio-sub">Invia l'uscita audio selezionata allo spettatore</span>
             </div>
             <input type="checkbox" id="chk-audio" checked />
             <span class="fluent-toggle"></span>

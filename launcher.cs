@@ -42,6 +42,12 @@ namespace OpenDeskCastLauncher
         public string LockTitle;
         public string LockSub;
 
+        public string ScreenShareTitle { get { return Code == "it" ? "Condivisione schermo" : "Screen sharing"; } }
+        public string ScreenShareSub { get { return Code == "it" ? "Attiva: desktop | Disattiva: schermo nero privacy" : "Active: desktop | Inactive: privacy black screen"; } }
+        public string AudioDevTitle { get { return Code == "it" ? "Uscita Audio" : "Audio Output"; } }
+        public string AudioSubActive { get { return Code == "it" ? "Invia l'uscita audio selezionata allo spettatore" : "Transmit selected audio output to viewer"; } }
+        public string AudioSubInactive { get { return Code == "it" ? "Audio disattivato (silenzioso)" : "Audio disabled (silent)"; } }
+
         public LangPack(
             string code, string name, string setupBtn, string v1, string vN, string qrTitle, string copied,
             string rotateBtn, string source, string screenWord, string primaryWord, string secondaryWord,
@@ -63,6 +69,12 @@ namespace OpenDeskCastLauncher
         public int Width;
         public int Height;
         public bool IsPrimary;
+    }
+
+    internal sealed class AudioDeviceMeta
+    {
+        public string Id;
+        public string Name;
     }
 
     internal sealed class FluentToggle : Control
@@ -228,9 +240,14 @@ namespace OpenDeskCastLauncher
         private readonly Label _lblQrTitle;
         private readonly Button _btnRotate;
         private readonly Label _lblSource;
+        private readonly Label _lblAudioDevice;
+        private readonly ComboBox _cmbAudioDevice;
         private readonly Label _lblFps;
         private readonly Label _lblQuality;
         private readonly Label _lblScale;
+        private readonly Label _lblScreenSharing;
+        private readonly Label _lblScreenSub;
+        private readonly FluentToggle _tglScreenSharing;
         private readonly Label _lblCursor;
         private readonly Label _lblAudio;
         private readonly Label _lblAudioSub;
@@ -251,13 +268,14 @@ namespace OpenDeskCastLauncher
         private int _lastViewersCount = 0;
         private bool _updatingUi = false;
         private readonly List<MonitorMeta> _monitors = new List<MonitorMeta>();
+        private readonly List<AudioDeviceMeta> _audioDevices = new List<AudioDeviceMeta>();
 
         public MainForm(Process serverProc)
         {
             _serverProc = serverProc;
 
             Text = "OpenDeskCast";
-            ClientSize = new Size(620, 360);
+            ClientSize = new Size(620, 395);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
@@ -324,11 +342,11 @@ namespace OpenDeskCastLauncher
             };
             Controls.Add(_lblBadge);
 
-            // Left Card: QR, 4-Digit PIN & opendeskcast.local (X: 16, Y: 48, W: 196, H: 296)
+            // Left Card: QR, 4-Digit PIN & opendeskcast.local (X: 16, Y: 48, W: 196, H: 335)
             FluentCard qrCard = new FluentCard
             {
                 Location = new Point(16, 48),
-                Size = new Size(196, 296)
+                Size = new Size(196, 335)
             };
             Controls.Add(qrCard);
 
@@ -339,14 +357,14 @@ namespace OpenDeskCastLauncher
                 ForeColor = Color.FromArgb(228, 228, 228),
                 TextAlign = ContentAlignment.MiddleCenter,
                 Size = new Size(176, 18),
-                Location = new Point(10, 8)
+                Location = new Point(10, 10)
             };
             qrCard.Controls.Add(_lblQrTitle);
 
             Panel qrWhiteFrame = new Panel
             {
                 BackColor = Color.White,
-                Location = new Point(30, 30),
+                Location = new Point(30, 36),
                 Size = new Size(136, 136)
             };
             qrCard.Controls.Add(qrWhiteFrame);
@@ -367,7 +385,7 @@ namespace OpenDeskCastLauncher
                 ForeColor = Color.FromArgb(76, 194, 255),
                 BackColor = Color.FromArgb(20, 34, 44),
                 TextAlign = ContentAlignment.MiddleCenter,
-                Location = new Point(12, 172),
+                Location = new Point(12, 184),
                 Size = new Size(172, 24)
             };
             qrCard.Controls.Add(_lblPin);
@@ -379,8 +397,8 @@ namespace OpenDeskCastLauncher
                 ForeColor = Color.FromArgb(76, 194, 255),
                 BackColor = Color.FromArgb(26, 26, 26),
                 TextAlign = ContentAlignment.MiddleCenter,
-                Location = new Point(12, 202),
-                Size = new Size(172, 36),
+                Location = new Point(12, 218),
+                Size = new Size(172, 38),
                 Cursor = Cursors.Hand
             };
             _lblUrl.Click += (s, e) =>
@@ -401,7 +419,7 @@ namespace OpenDeskCastLauncher
             {
                 Text = "Rigenera QR / Disconnetti",
                 Font = new Font("Segoe UI Semibold", 8.2F, FontStyle.Bold),
-                Location = new Point(12, 248),
+                Location = new Point(12, 268),
                 Size = new Size(172, 34),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(48, 48, 48),
@@ -413,34 +431,50 @@ namespace OpenDeskCastLauncher
             _btnRotate.Click += (s, e) => RotateSessionToken();
             qrCard.Controls.Add(_btnRotate);
 
-            // Right Card: Settings (X: 224, Y: 48, W: 380, H: 296)
+            // Right Card: Settings (X: 224, Y: 48, W: 380, H: 335)
             FluentCard ctrlCard = new FluentCard
             {
                 Location = new Point(224, 48),
-                Size = new Size(380, 296)
+                Size = new Size(380, 335)
             };
             Controls.Add(ctrlCard);
 
-            // Row 1: "Sorgente"
+            // Row 1: "Schermo" & "Uscita Audio"
             _lblSource = new Label
             {
-                Text = "Sorgente",
+                Text = "Schermo",
                 Font = new Font("Segoe UI", 8.2F),
                 ForeColor = Color.FromArgb(165, 165, 165),
-                Location = new Point(14, 12),
-                Size = new Size(320, 16)
+                Location = new Point(14, 10),
+                Size = new Size(162, 16)
             };
             ctrlCard.Controls.Add(_lblSource);
 
-            _cmbMonitor = CreateDarkCombo(new Point(14, 31), 320);
+            _cmbMonitor = CreateDarkCombo(new Point(14, 28), 162);
             _cmbMonitor.SelectedIndexChanged += (s, e) => PushSettings();
             ctrlCard.Controls.Add(_cmbMonitor);
+
+            _lblAudioDevice = new Label
+            {
+                Text = "Uscita Audio",
+                Font = new Font("Segoe UI", 8.2F),
+                ForeColor = Color.FromArgb(165, 165, 165),
+                Location = new Point(184, 10),
+                Size = new Size(154, 16)
+            };
+            ctrlCard.Controls.Add(_lblAudioDevice);
+
+            _cmbAudioDevice = CreateDarkCombo(new Point(184, 28), 154);
+            _cmbAudioDevice.Items.Add("Default");
+            _cmbAudioDevice.SelectedIndex = 0;
+            _cmbAudioDevice.SelectedIndexChanged += (s, e) => PushSettings();
+            ctrlCard.Controls.Add(_cmbAudioDevice);
 
             Button btnRefresh = new Button
             {
                 Text = "↻",
-                Location = new Point(340, 30),
-                Size = new Size(26, 25),
+                Location = new Point(344, 27),
+                Size = new Size(24, 25),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(30, 30, 30),
                 ForeColor = Color.FromArgb(210, 210, 210),
@@ -450,18 +484,18 @@ namespace OpenDeskCastLauncher
             btnRefresh.Click += (s, e) => RefreshMonitorsForce();
             ctrlCard.Controls.Add(btnRefresh);
 
-            // Row 2: FPS, Quality, Scale (Y: 66)
+            // Row 2: FPS, Quality, Scale (Y: 60)
             _lblFps = new Label
             {
                 Text = "Fluidità",
                 Font = new Font("Segoe UI", 8.2F),
                 ForeColor = Color.FromArgb(165, 165, 165),
-                Location = new Point(14, 66),
+                Location = new Point(14, 60),
                 Size = new Size(110, 16)
             };
             ctrlCard.Controls.Add(_lblFps);
 
-            _cmbFps = CreateDarkCombo(new Point(14, 85), 110);
+            _cmbFps = CreateDarkCombo(new Point(14, 78), 110);
             _cmbFps.Items.AddRange(new object[] { "15 FPS", "30 FPS", "45 FPS", "60 FPS" });
             _cmbFps.SelectedIndex = 1;
             _cmbFps.SelectedIndexChanged += (s, e) => PushSettings();
@@ -472,12 +506,12 @@ namespace OpenDeskCastLauncher
                 Text = "Qualità",
                 Font = new Font("Segoe UI", 8.2F),
                 ForeColor = Color.FromArgb(165, 165, 165),
-                Location = new Point(135, 66),
+                Location = new Point(135, 60),
                 Size = new Size(110, 16)
             };
             ctrlCard.Controls.Add(_lblQuality);
 
-            _cmbQuality = CreateDarkCombo(new Point(135, 85), 110);
+            _cmbQuality = CreateDarkCombo(new Point(135, 78), 110);
             _cmbQuality.Items.AddRange(new object[] { "50%", "60%", "80%", "90%", "100%" });
             _cmbQuality.SelectedIndex = 2;
             _cmbQuality.SelectedIndexChanged += (s, e) => PushSettings();
@@ -488,64 +522,90 @@ namespace OpenDeskCastLauncher
                 Text = "Risoluzione",
                 Font = new Font("Segoe UI", 8.2F),
                 ForeColor = Color.FromArgb(165, 165, 165),
-                Location = new Point(256, 66),
+                Location = new Point(256, 60),
                 Size = new Size(110, 16)
             };
             ctrlCard.Controls.Add(_lblScale);
 
-            _cmbScale = CreateDarkCombo(new Point(256, 85), 110);
+            _cmbScale = CreateDarkCombo(new Point(256, 78), 110);
             _cmbScale.Items.AddRange(new object[] { "50%", "60%", "80%", "90%", "100%" });
             _cmbScale.SelectedIndex = 4;
             _cmbScale.SelectedIndexChanged += (s, e) => PushSettings();
             ctrlCard.Controls.Add(_cmbScale);
 
-            // Divider (Y: 122)
+            // Divider (Y: 112)
             Panel div = new Panel
             {
                 BackColor = Color.FromArgb(56, 56, 56),
-                Location = new Point(14, 122),
+                Location = new Point(14, 112),
                 Size = new Size(352, 1)
             };
             ctrlCard.Controls.Add(div);
 
-            // Row 3: Switch Cursor (Y: 136)
+            // Row 3: Switch Screen Sharing (Y: 122)
+            _lblScreenSharing = new Label
+            {
+                Text = "Condivisione schermo",
+                Font = new Font("Segoe UI", 9.2F),
+                ForeColor = Color.FromArgb(240, 240, 240),
+                Location = new Point(14, 122),
+                Size = new Size(295, 18)
+            };
+            ctrlCard.Controls.Add(_lblScreenSharing);
+
+            _lblScreenSub = new Label
+            {
+                Text = "Attiva: desktop | Disattiva: schermo nero privacy",
+                Font = new Font("Segoe UI", 7.6F),
+                ForeColor = Color.FromArgb(148, 148, 148),
+                Location = new Point(14, 140),
+                Size = new Size(295, 16)
+            };
+            ctrlCard.Controls.Add(_lblScreenSub);
+
+            _tglScreenSharing = new FluentToggle { Location = new Point(324, 124) };
+            _tglScreenSharing.SetCheckedSilent(true);
+            _tglScreenSharing.CheckedChanged += (s, e) => PushSettings();
+            ctrlCard.Controls.Add(_tglScreenSharing);
+
+            // Row 4: Switch Cursor (Y: 164)
             _lblCursor = new Label
             {
                 Text = "Mostra cursore del mouse",
                 Font = new Font("Segoe UI", 9.2F),
                 ForeColor = Color.FromArgb(240, 240, 240),
-                Location = new Point(14, 136),
-                Size = new Size(295, 22)
+                Location = new Point(14, 164),
+                Size = new Size(295, 20)
             };
             ctrlCard.Controls.Add(_lblCursor);
 
-            _tglCursor = new FluentToggle { Location = new Point(324, 136) };
+            _tglCursor = new FluentToggle { Location = new Point(324, 164) };
             _tglCursor.SetCheckedSilent(true);
             _tglCursor.CheckedChanged += (s, e) => PushSettings();
             ctrlCard.Controls.Add(_tglCursor);
 
-            // Row 4: Switch Audio (Y: 172)
+            // Row 5: Switch Audio (Y: 198)
             _lblAudio = new Label
             {
-                Text = "Trasmetti audio del PC",
+                Text = "Trasmetti audio",
                 Font = new Font("Segoe UI", 9.2F),
                 ForeColor = Color.FromArgb(240, 240, 240),
-                Location = new Point(14, 172),
-                Size = new Size(295, 20)
+                Location = new Point(14, 198),
+                Size = new Size(295, 18)
             };
             ctrlCard.Controls.Add(_lblAudio);
 
             _lblAudioSub = new Label
             {
-                Text = "Dispositivo: Audio to OpenDeskCast (PC silenziato)",
-                Font = new Font("Segoe UI", 7.8F),
+                Text = "Invia l'uscita audio selezionata allo spettatore",
+                Font = new Font("Segoe UI", 7.6F),
                 ForeColor = Color.FromArgb(108, 203, 95),
-                Location = new Point(14, 193),
-                Size = new Size(295, 18)
+                Location = new Point(14, 216),
+                Size = new Size(295, 16)
             };
             ctrlCard.Controls.Add(_lblAudioSub);
 
-            _tglAudio = new FluentToggle { Location = new Point(324, 176) };
+            _tglAudio = new FluentToggle { Location = new Point(324, 200) };
             _tglAudio.SetCheckedSilent(true);
             _tglAudio.CheckedChanged += (s, e) => {
                 UpdateAudioSubLabel();
@@ -553,28 +613,28 @@ namespace OpenDeskCastLauncher
             };
             ctrlCard.Controls.Add(_tglAudio);
 
-            // Row 5: Switch Lock New Devices on Public Network (Y: 220)
+            // Row 6: Switch Lock New Devices on Public Network (Y: 242)
             _lblLock = new Label
             {
                 Text = "Blocca nuovi dispositivi (Rete Pubblica)",
                 Font = new Font("Segoe UI", 9.2F),
                 ForeColor = Color.FromArgb(240, 240, 240),
-                Location = new Point(14, 218),
-                Size = new Size(295, 20)
+                Location = new Point(14, 242),
+                Size = new Size(295, 18)
             };
             ctrlCard.Controls.Add(_lblLock);
 
             _lblLockSub = new Label
             {
                 Text = "Impedisce nuovi collegamenti anche conoscendo l'IP",
-                Font = new Font("Segoe UI", 7.8F),
+                Font = new Font("Segoe UI", 7.6F),
                 ForeColor = Color.FromArgb(148, 148, 148),
-                Location = new Point(14, 239),
-                Size = new Size(295, 18)
+                Location = new Point(14, 260),
+                Size = new Size(295, 16)
             };
             ctrlCard.Controls.Add(_lblLockSub);
 
-            _tglLock = new FluentToggle { Location = new Point(324, 224) };
+            _tglLock = new FluentToggle { Location = new Point(324, 244) };
             _tglLock.CheckedChanged += (s, e) => PushSettings();
             ctrlCard.Controls.Add(_tglLock);
 
@@ -617,6 +677,23 @@ namespace OpenDeskCastLauncher
             _updatingUi = false;
         }
 
+        private void RebuildAudioDeviceNames()
+        {
+            if (_audioDevices.Count == 0) return;
+            int prevIdx = Math.Max(0, _cmbAudioDevice.SelectedIndex);
+            _updatingUi = true;
+            _cmbAudioDevice.Items.Clear();
+            foreach (AudioDeviceMeta d in _audioDevices)
+            {
+                _cmbAudioDevice.Items.Add(d.Name);
+            }
+            if (_cmbAudioDevice.Items.Count > 0)
+            {
+                _cmbAudioDevice.SelectedIndex = Math.Min(prevIdx, _cmbAudioDevice.Items.Count - 1);
+            }
+            _updatingUi = false;
+        }
+
         private void ApplyLanguage()
         {
             LangPack lp = CurrentLang();
@@ -626,17 +703,21 @@ namespace OpenDeskCastLauncher
             _lblQrTitle.Text = lp.QrTitle;
             _btnRotate.Text = lp.RotateBtn;
             _lblSource.Text = lp.Source;
+            _lblAudioDevice.Text = lp.AudioDevTitle;
             _lblFps.Text = lp.Fps;
             _lblQuality.Text = lp.Quality;
             _lblScale.Text = lp.Scale;
+            _lblScreenSharing.Text = lp.ScreenShareTitle;
+            _lblScreenSub.Text = lp.ScreenShareSub;
             _lblCursor.Text = lp.Cursor;
-            _lblAudio.Text = lp.Audio;
+            _lblAudio.Text = lp.Code == "it" ? "Trasmetti audio" : "Stream audio";
             _lblLock.Text = lp.LockTitle;
             _lblLockSub.Text = lp.LockSub;
 
             _updatingUi = false;
             UpdateAudioSubLabel();
             RebuildMonitorNames();
+            RebuildAudioDeviceNames();
             UpdateBadgeText(_lastViewersCount);
         }
 
@@ -644,19 +725,14 @@ namespace OpenDeskCastLauncher
         {
             if (_lblAudioSub == null) return;
             LangPack lp = CurrentLang();
-            bool isIt = lp.Code == "it";
             if (_tglAudio.Checked)
             {
-                _lblAudioSub.Text = isIt
-                    ? "Dispositivo: Audio to OpenDeskCast (PC silenziato)"
-                    : "Device: Audio to OpenDeskCast (PC muted)";
+                _lblAudioSub.Text = lp.AudioSubActive;
                 _lblAudioSub.ForeColor = Color.FromArgb(108, 203, 95);
             }
             else
             {
-                _lblAudioSub.Text = isIt
-                    ? "Dispositivo: Altoparlanti PC (Cast disattivato)"
-                    : "Device: Local PC Speakers (Cast inactive)";
+                _lblAudioSub.Text = lp.AudioSubInactive;
                 _lblAudioSub.ForeColor = Color.FromArgb(148, 148, 148);
             }
         }
@@ -919,6 +995,27 @@ namespace OpenDeskCastLauncher
                         }
                         RebuildMonitorNames();
                     }
+
+                    Match mAudioBlock = Regex.Match(json, "\"audio_devices\"\\s*:\\s*\\[(.*?)\\]", RegexOptions.Singleline);
+                    if (mAudioBlock.Success)
+                    {
+                        MatchCollection mDevs = Regex.Matches(
+                            mAudioBlock.Groups[1].Value,
+                            "\\{\\s*\"id\"\\s*:\\s*\"([^\"]+)\"\\s*,\\s*\"name\"\\s*:\\s*\"([^\"]+)\"\\s*\\}"
+                        );
+                        if (forceReload || mDevs.Count != _audioDevices.Count)
+                        {
+                            _audioDevices.Clear();
+                            foreach (Match md in mDevs)
+                            {
+                                AudioDeviceMeta adm = new AudioDeviceMeta();
+                                adm.Id = md.Groups[1].Value;
+                                adm.Name = Regex.Unescape(md.Groups[2].Value);
+                                _audioDevices.Add(adm);
+                            }
+                            RebuildAudioDeviceNames();
+                        }
+                    }
                 }
             }
             catch { }
@@ -946,6 +1043,9 @@ namespace OpenDeskCastLauncher
                 int monId = (_cmbMonitor.SelectedIndex >= 0 && _cmbMonitor.SelectedIndex < _monitors.Count)
                     ? _monitors[_cmbMonitor.SelectedIndex].Id
                     : 0;
+                string audioDevId = (_cmbAudioDevice.SelectedIndex >= 0 && _cmbAudioDevice.SelectedIndex < _audioDevices.Count)
+                    ? _audioDevices[_cmbAudioDevice.SelectedIndex].Id
+                    : "default";
                 int[] fpsVals = new int[] { 15, 30, 45, 60 };
                 int[] qualVals = new int[] { 50, 60, 80, 90, 100 };
                 string[] scaleVals = new string[] { "0.5", "0.6", "0.8", "0.9", "1.0" };
@@ -953,13 +1053,16 @@ namespace OpenDeskCastLauncher
                 int fps = fpsVals[Math.Max(0, _cmbFps.SelectedIndex)];
                 int qual = qualVals[Math.Max(0, _cmbQuality.SelectedIndex)];
                 string scale = scaleVals[Math.Max(0, _cmbScale.SelectedIndex)];
+                string screenShare = _tglScreenSharing.Checked ? "true" : "false";
                 string cursor = _tglCursor.Checked ? "true" : "false";
                 string audio = _tglAudio.Checked ? "true" : "false";
                 string lockNew = _tglLock.Checked ? "true" : "false";
 
+                string safeDevId = audioDevId.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
                 string body = string.Format(
-                    "{{\"monitor_id\":{0},\"fps\":{1},\"quality\":{2},\"scale\":{3},\"draw_cursor\":{4},\"audio_enabled\":{5},\"lock_new_viewers\":{6}}}",
-                    monId, fps, qual, scale, cursor, audio, lockNew
+                    "{{\"monitor_id\":{0},\"audio_device_id\":\"{1}\",\"screen_sharing_enabled\":{2},\"fps\":{3},\"quality\":{4},\"scale\":{5},\"draw_cursor\":{6},\"audio_enabled\":{7},\"lock_new_viewers\":{8}}}",
+                    monId, safeDevId, screenShare, fps, qual, scale, cursor, audio, lockNew
                 );
 
                 using (WebClient wc = new WebClient())

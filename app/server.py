@@ -70,10 +70,12 @@ def _new_pin() -> str:
 @dataclass
 class HostState:
     monitor_id: int = 0
+    audio_device_id: str = "default"
     fps: int = 30
     quality: int = 80
     scale: float = 1.0
     draw_cursor: bool = True
+    screen_sharing_enabled: bool = True
     audio_enabled: bool = True
     lock_new_viewers: bool = False
     session_token: str = field(default_factory=_new_token)
@@ -83,10 +85,12 @@ class HostState:
 
 class HostSettingsUpdate(BaseModel):
     monitor_id: int | None = None
+    audio_device_id: str | None = None
     fps: int | None = None
     quality: int | None = None
     scale: float | None = None
     draw_cursor: bool | None = None
+    screen_sharing_enabled: bool | None = None
     audio_enabled: bool | None = None
     lock_new_viewers: bool | None = None
 
@@ -207,6 +211,7 @@ def api_status(request: Request, port: int = Query(default=DEFAULT_PORT)) -> dic
         "base_url": f"http://{ips[0]}:{port}",
         "session_pin": host_state.session_pin,
         "monitors": list_monitors(),
+        "audio_devices": audio_streamer.list_audio_devices(),
         "settings": asdict(host_state),
         "connected_viewers": len(active_viewers),
     }
@@ -218,6 +223,11 @@ def api_update_settings(request: Request, req: HostSettingsUpdate) -> dict[str, 
     _cancel_pending_close_timer()
     if req.monitor_id is not None:
         host_state.monitor_id = max(0, int(req.monitor_id))
+    if req.audio_device_id is not None:
+        host_state.audio_device_id = str(req.audio_device_id)
+        audio_streamer.set_device(host_state.audio_device_id)
+    if req.screen_sharing_enabled is not None:
+        host_state.screen_sharing_enabled = bool(req.screen_sharing_enabled)
     if req.fps is not None:
         host_state.fps = max(5, min(60, int(req.fps)))
     if req.quality is not None:
@@ -346,6 +356,7 @@ async def ws_stream(ws: WebSocket, t: str | None = Query(default=None)) -> None:
             pass
 
     ack_task = asyncio.create_task(_ack_reader())
+    black_sent = False
 
     try:
         while True:
@@ -359,6 +370,27 @@ async def ws_stream(ws: WebSocket, t: str | None = Query(default=None)) -> None:
             t_start = time.monotonic()
             force_next = seen_version != host_state.version
             seen_version = host_state.version
+
+            if not host_state.screen_sharing_enabled:
+                if not black_sent:
+                    try:
+                        black_packet = await asyncio.to_thread(
+                            capturer.encode_black_frame,
+                            monitor_id=host_state.monitor_id,
+                            scale=host_state.scale,
+                        )
+                        if black_packet:
+                            credits -= 1
+                            await ws.send_bytes(black_packet)
+                    except Exception:
+                        pass
+                    black_sent = True
+                await asyncio.sleep(0.08)
+                continue
+            else:
+                if black_sent:
+                    black_sent = False
+                    force_next = True
 
             try:
                 packet = await asyncio.to_thread(
