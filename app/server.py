@@ -70,7 +70,7 @@ def _new_pin() -> str:
 @dataclass
 class HostState:
     monitor_id: int = 0
-    audio_device_id: str = "cast"
+    audio_device_id: str = "speakers"
     fps: int = 30
     quality: int = 80
     scale: float = 1.0
@@ -203,6 +203,7 @@ def api_status(request: Request, port: int = Query(default=DEFAULT_PORT)) -> dic
     ips = get_local_ipv4_addresses()
     tok = host_state.session_token
     urls = [f"http://{ip}:{port}/?t={tok}" for ip in ips]
+    viewers_count = len(active_viewers)
     return {
         "app_version": APP_VERSION,
         "ips": ips,
@@ -211,10 +212,10 @@ def api_status(request: Request, port: int = Query(default=DEFAULT_PORT)) -> dic
         "base_url": f"http://{ips[0]}:{port}",
         "session_pin": host_state.session_pin,
         "monitors": list_monitors(),
-        "audio_devices": audio_streamer.list_audio_devices(),
+        "audio_devices": audio_streamer.list_audio_devices(viewers_count),
         "has_virtual_audio_driver": audio_streamer.device_manager.has_virtual_cable(),
         "settings": asdict(host_state),
-        "connected_viewers": len(active_viewers),
+        "connected_viewers": viewers_count,
     }
 
 
@@ -233,7 +234,10 @@ def api_update_settings(request: Request, req: HostSettingsUpdate) -> dict[str, 
     if req.monitor_id is not None:
         host_state.monitor_id = max(0, int(req.monitor_id))
     if req.audio_device_id is not None:
-        host_state.audio_device_id = str(req.audio_device_id)
+        target_dev = str(req.audio_device_id)
+        if target_dev == "cast" and len(active_viewers) == 0:
+            target_dev = "speakers"
+        host_state.audio_device_id = target_dev
         audio_streamer.set_device(host_state.audio_device_id)
     if req.screen_sharing_enabled is not None:
         host_state.screen_sharing_enabled = bool(req.screen_sharing_enabled)
@@ -346,6 +350,10 @@ async def ws_stream(ws: WebSocket, t: str | None = Query(default=None)) -> None:
         return
 
     active_viewers.add(ws)
+    if len(active_viewers) == 1:
+        host_state.audio_device_id = "cast"
+        audio_streamer.set_destination("cast")
+        host_state.version += 1
     capturer = ScreenCapturer(keyframe_interval=0.5)
     seen_version = -1
     credits = 1
@@ -428,6 +436,10 @@ async def ws_stream(ws: WebSocket, t: str | None = Query(default=None)) -> None:
     finally:
         ack_task.cancel()
         active_viewers.discard(ws)
+        if len(active_viewers) == 0:
+            host_state.audio_device_id = "speakers"
+            audio_streamer.set_destination("speakers")
+            host_state.version += 1
 
 
 @app.websocket("/ws/audio")

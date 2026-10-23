@@ -630,7 +630,7 @@ class AudioStreamer:
         self.sample_rate = int(sample_rate)
         self.channels = int(channels)
         self.device_id = "default"
-        self.destination = "cast"  # "cast" (remote) or "speakers" (local PC)
+        self.destination = "speakers"  # "speakers" (local PC) or "cast" (remote)
         self._subscribers: Set[asyncio.Queue[bytes]] = set()
         self._worker: threading.Thread | None = None
         self._lock = threading.Lock()
@@ -816,12 +816,12 @@ class AudioStreamer:
             self._stop_worker()
             self.device_manager.restore_audio()
 
-    def list_audio_devices(self) -> list[dict[str, str]]:
-        """Return the two logical destinations: local PC speakers vs remote cast device."""
-        return [
-            {"id": "speakers", "name": "Altoparlanti PC (Locale)"},
-            {"id": "cast", "name": "Dispositivo Ricevente (OpenDeskCast)"},
-        ]
+    def list_audio_devices(self, viewers_count: int = 0) -> list[dict[str, str]]:
+        """Return the available destinations based on whether a receiver is currently connected."""
+        devices = [{"id": "speakers", "name": "Altoparlanti PC (Locale)"}]
+        if viewers_count > 0:
+            devices.append({"id": "cast", "name": "Dispositivo Ricevente (OpenDeskCast)"})
+        return devices
 
     def pick_preferred_device(self, requested: str | None = None) -> str | None:
         if requested in ("speakers", "cast"):

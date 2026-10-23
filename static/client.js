@@ -32,6 +32,33 @@
   let sessionTerminated = false;
   let enteredPin = "";
   let verifyingPin = false;
+  let audioUnlocked = false;
+
+  const audioTapBanner = document.getElementById("audio-tap-banner");
+  const isIt = (navigator.language || "").toLowerCase().startsWith("it");
+  const tapTextEl = document.getElementById("audio-tap-text");
+  if (tapTextEl) {
+    tapTextEl.textContent = isIt
+      ? "Tocca per attivare audio e schermo intero"
+      : "Tap to enable audio & fullscreen";
+  }
+
+  function showAudioBanner() {
+    if (audioTapBanner && !sessionTerminated && !audioUnlocked && sessionToken) {
+      audioTapBanner.classList.remove("hidden");
+      audioTapBanner.classList.remove("fading");
+    }
+  }
+
+  function hideAudioBanner() {
+    if (audioTapBanner && !audioTapBanner.classList.contains("hidden")) {
+      audioTapBanner.classList.add("fading");
+      setTimeout(() => {
+        audioTapBanner.classList.add("hidden");
+        audioTapBanner.classList.remove("fading");
+      }, 350);
+    }
+  }
 
   async function processPendingFrames() {
     if (rendering) return;
@@ -85,6 +112,7 @@
   function wipeToBlackAndLock() {
     sessionTerminated = true;
     sessionToken = "";
+    hideAudioBanner();
     if (pinOverlay) pinOverlay.classList.add("hidden");
     if (reconnectTimer) {
       clearTimeout(reconnectTimer);
@@ -201,8 +229,18 @@
 
   function ensureAudioUnlocked() {
     initAudioContext();
-    if (audioCtx && audioCtx.state === "suspended") {
-      audioCtx.resume().catch(() => {});
+    if (audioCtx) {
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume().then(() => {
+          if (audioCtx.state === "running") {
+            audioUnlocked = true;
+            hideAudioBanner();
+          }
+        }).catch(() => {});
+      } else if (audioCtx.state === "running") {
+        audioUnlocked = true;
+        hideAudioBanner();
+      }
     }
   }
 
@@ -210,6 +248,17 @@
   window.addEventListener("click", ensureAudioUnlocked);
   window.addEventListener("touchend", ensureAudioUnlocked, { passive: true });
   window.addEventListener("keydown", ensureAudioUnlocked);
+
+  if (audioTapBanner) {
+    audioTapBanner.addEventListener("click", (e) => {
+      e.stopPropagation();
+      requestWakeLockAndFullscreen();
+    });
+    audioTapBanner.addEventListener("touchend", (e) => {
+      e.stopPropagation();
+      requestWakeLockAndFullscreen();
+    }, { passive: true });
+  }
 
   async function requestWakeLockAndFullscreen() {
     ensureAudioUnlocked();
@@ -237,6 +286,27 @@
       `${proto}//${window.location.host}/ws/audio?t=${encodeURIComponent(sessionToken)}`
     );
     wsAudio.binaryType = "arraybuffer";
+
+    wsAudio.onopen = () => {
+      initAudioContext();
+      if (audioCtx) {
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume().then(() => {
+            if (audioCtx.state === "running") {
+              audioUnlocked = true;
+              hideAudioBanner();
+            } else {
+              showAudioBanner();
+            }
+          }).catch(() => {
+            showAudioBanner();
+          });
+        } else if (audioCtx.state === "running") {
+          audioUnlocked = true;
+          hideAudioBanner();
+        }
+      }
+    };
 
     wsAudio.onmessage = (ev) => {
       if (!(ev.data instanceof ArrayBuffer)) return;

@@ -462,8 +462,7 @@ namespace OpenDeskCastLauncher
 
             _cmbAudioDevice = CreateDarkCombo(new Point(184, 28), 154);
             _cmbAudioDevice.Items.Add("Altoparlanti PC (Locale)");
-            _cmbAudioDevice.Items.Add("Dispositivo Ricevente (OpenDeskCast)");
-            _cmbAudioDevice.SelectedIndex = 1;
+            _cmbAudioDevice.SelectedIndex = 0;
             _cmbAudioDevice.SelectedIndexChanged += (s, e) => PushSettings();
             ctrlCard.Controls.Add(_cmbAudioDevice);
 
@@ -678,12 +677,18 @@ namespace OpenDeskCastLauncher
         {
             LangPack lp = CurrentLang();
             int prevIdx = _cmbAudioDevice.SelectedIndex;
-            if (prevIdx < 0) prevIdx = 1;
             _updatingUi = true;
             _cmbAudioDevice.Items.Clear();
             _cmbAudioDevice.Items.Add(lp.AudioDevSpeakers);
-            _cmbAudioDevice.Items.Add(lp.AudioDevReceiver);
-            _cmbAudioDevice.SelectedIndex = Math.Min(prevIdx, 1);
+            if (_lastViewersCount > 0)
+            {
+                _cmbAudioDevice.Items.Add(lp.AudioDevReceiver);
+                _cmbAudioDevice.SelectedIndex = (prevIdx <= 0) ? 1 : Math.Min(prevIdx, _cmbAudioDevice.Items.Count - 1);
+            }
+            else
+            {
+                _cmbAudioDevice.SelectedIndex = 0;
+            }
             _updatingUi = false;
         }
 
@@ -991,7 +996,11 @@ namespace OpenDeskCastLauncher
                     if (mViewers.Success)
                     {
                         int count = int.Parse(mViewers.Groups[1].Value);
-                        UpdateBadgeText(count);
+                        if (forceReload || count != _lastViewersCount)
+                        {
+                            UpdateBadgeText(count);
+                            RebuildAudioDeviceNames();
+                        }
                     }
 
                     bool guideNeedsUpdate = false;
@@ -1071,7 +1080,7 @@ namespace OpenDeskCastLauncher
                     if (mAudDev.Success)
                     {
                         string dev = mAudDev.Groups[1].Value;
-                        int targetIdx = (dev == "speakers") ? 0 : 1;
+                        int targetIdx = (dev == "cast" && _cmbAudioDevice.Items.Count > 1) ? 1 : 0;
                         if (_cmbAudioDevice.SelectedIndex != targetIdx && _cmbAudioDevice.Items.Count > targetIdx)
                         {
                             _updatingUi = true;
@@ -1106,7 +1115,7 @@ namespace OpenDeskCastLauncher
                 int monId = (_cmbMonitor.SelectedIndex >= 0 && _cmbMonitor.SelectedIndex < _monitors.Count)
                     ? _monitors[_cmbMonitor.SelectedIndex].Id
                     : 0;
-                string audioDevId = _cmbAudioDevice.SelectedIndex == 0 ? "speakers" : "cast";
+                string audioDevId = (_cmbAudioDevice.SelectedIndex == 1 && _lastViewersCount > 0) ? "cast" : "speakers";
                 int[] fpsVals = new int[] { 15, 30, 45, 60 };
                 int[] qualVals = new int[] { 50, 60, 80, 90, 100 };
                 string[] scaleVals = new string[] { "0.5", "0.6", "0.8", "0.9", "1.0" };

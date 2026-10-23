@@ -143,12 +143,11 @@
 
   function renderAudioDeviceOptions(currentDevId) {
     if (!selAudioDevice) return;
-    const prevVal = currentDevId || selAudioDevice.value || "cast";
+    const prevVal = currentDevId || selAudioDevice.value || "speakers";
     selAudioDevice.innerHTML = "";
     const isIt = currentLang === "it";
     const devList = (lastAudioDevices && lastAudioDevices.length > 0) ? lastAudioDevices : [
-      { id: "speakers", name: isIt ? "Altoparlanti PC (Locale)" : "PC Speakers (Local)" },
-      { id: "cast", name: isIt ? "Dispositivo Ricevente (OpenDeskCast)" : "Receiver Device (OpenDeskCast)" }
+      { id: "speakers", name: isIt ? "Altoparlanti PC (Locale)" : "PC Speakers (Local)" }
     ];
     devList.forEach((d) => {
       const opt = document.createElement("option");
@@ -163,6 +162,9 @@
       if (d.id === prevVal) opt.selected = true;
       selAudioDevice.appendChild(opt);
     });
+    if (selAudioDevice.selectedIndex < 0 && selAudioDevice.options.length > 0) {
+      selAudioDevice.selectedIndex = 0;
+    }
   }
 
   function applyTranslations() {
