@@ -195,8 +195,6 @@ class AudioDeviceManager:
 
     def route_audio_to_cast(self) -> None:
         """Silence physical speakers on PC so sound only goes to the cast."""
-        if self._is_routed:
-            return
         if sys.platform == "win32" and _WASAPI_AVAILABLE:
             try:
                 comtypes.CoInitialize()
@@ -206,8 +204,11 @@ class AudioDeviceManager:
                 device = enumerator.GetDefaultAudioEndpoint(eRender, eConsole)
                 vol_ptr = device.Activate(byref(IID_IAudioEndpointVolume), CLSCTX_ALL, None)
                 vol = vol_ptr.QueryInterface(IAudioEndpointVolume)
-                self._orig_mute_state = bool(vol.GetMute())
-                vol.SetMute(True, None)
+                current_mute = bool(vol.GetMute())
+                if not self._is_routed:
+                    self._orig_mute_state = current_mute
+                if not current_mute:
+                    vol.SetMute(True, None)
                 self._is_routed = True
             except Exception:
                 pass
@@ -217,6 +218,8 @@ class AudioDeviceManager:
                 except Exception:
                     pass
         elif sys.platform.startswith("linux"):
+            if self._is_routed:
+                return
             try:
                 res = subprocess.run(
                     ["pactl", "get-default-sink"], capture_output=True, text=True, timeout=2
@@ -249,6 +252,8 @@ class AudioDeviceManager:
             except Exception:
                 pass
         elif sys.platform == "darwin":
+            if self._is_routed:
+                return
             try:
                 subprocess.run(["osascript", "-e", "set volume output muted true"], timeout=2)
                 self._is_routed = True
@@ -597,7 +602,7 @@ class AudioStreamer:
 
     def on_audio_enabled_changed(self, enabled: bool) -> None:
         with self._lock:
-            if enabled and self._subscribers:
+            if enabled:
                 self.device_manager.route_audio_to_cast()
             else:
                 self.device_manager.restore_audio()

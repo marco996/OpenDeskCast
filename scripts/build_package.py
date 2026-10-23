@@ -61,8 +61,13 @@ def build() -> Path:
 
     # 1. Clean previous build artifacts
     DIST_DIR.mkdir(parents=True, exist_ok=True)
-    for sub in ("OpenDeskCast", "OpenDeskCastEngine"):
-        p = DIST_DIR / sub
+    if sys.platform == "win32":
+        for sub in ("OpenDeskCast", "OpenDeskCastEngine"):
+            p = DIST_DIR / sub
+            if p.exists():
+                shutil.rmtree(p)
+    else:
+        p = DIST_DIR / "OpenDeskCast-linux"
         if p.exists():
             shutil.rmtree(p)
     if BUILD_DIR.exists():
@@ -102,8 +107,8 @@ def build() -> Path:
     pyi_cmd.append(str(ROOT / "run.py"))
     run_step(pyi_cmd)
 
-    pkg_root = DIST_DIR / "OpenDeskCast"
     if sys.platform == "win32":
+        pkg_root = DIST_DIR / "OpenDeskCast"
         engine_dist = DIST_DIR / "OpenDeskCastEngine"
         pkg_root.mkdir(parents=True, exist_ok=True)
         target_engine = pkg_root / "engine"
@@ -135,6 +140,14 @@ def build() -> Path:
         if root_engine.exists():
             shutil.rmtree(root_engine)
         shutil.copytree(target_engine, root_engine)
+    elif sys.platform == "darwin":
+        pkg_root = DIST_DIR / "OpenDeskCast-macos"
+        if (DIST_DIR / "OpenDeskCast").exists():
+            shutil.move(str(DIST_DIR / "OpenDeskCast"), str(pkg_root))
+    else:
+        pkg_root = DIST_DIR / "OpenDeskCast-linux"
+        if (DIST_DIR / "OpenDeskCast").exists():
+            shutil.move(str(DIST_DIR / "OpenDeskCast"), str(pkg_root))
 
     shutil.copytree(ROOT / "static", pkg_root / "static", dirs_exist_ok=True)
     if (ROOT / "VERSION").is_file():
@@ -158,7 +171,7 @@ def build() -> Path:
         archive_path = Path(shutil.make_archive(str(archive_base), "zip", root_dir=DIST_DIR, base_dir="OpenDeskCast"))
     else:
         archive_base = DIST_DIR / f"OpenDeskCast-v{version}-linux-x64"
-        archive_path = Path(shutil.make_archive(str(archive_base), "gztar", root_dir=DIST_DIR, base_dir="OpenDeskCast"))
+        archive_path = Path(shutil.make_archive(str(archive_base), "gztar", root_dir=DIST_DIR, base_dir="OpenDeskCast-linux"))
         try:
             from scripts.build_deb import build_deb
             build_deb()

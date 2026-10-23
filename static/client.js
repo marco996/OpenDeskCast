@@ -270,6 +270,19 @@
       src.start(nextAudioTime);
       nextAudioTime += buf.duration;
     };
+
+    wsAudio.onclose = () => {
+      wsAudio = null;
+      if (!sessionTerminated && sessionToken) {
+        setTimeout(connectAudio, 800);
+      }
+    };
+
+    wsAudio.onerror = () => {
+      try {
+        wsAudio.close();
+      } catch (_) {}
+    };
   }
 
   function scheduleReconnect(delayMs = 400) {

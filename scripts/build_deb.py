@@ -12,7 +12,7 @@ import time
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST_DIR = ROOT / "dist"
-SOURCE_DIR = DIST_DIR / "OpenDeskCast"
+SOURCE_DIR = DIST_DIR / "OpenDeskCast-linux" if (DIST_DIR / "OpenDeskCast-linux").exists() else DIST_DIR / "OpenDeskCast"
 BUILD_DIR = ROOT / "build" / "deb"
 
 
