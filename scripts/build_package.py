@@ -97,6 +97,8 @@ def build() -> Path:
 
     if sys.platform == "win32":
         pyi_cmd.extend(["--collect-submodules", "comtypes"])
+    else:
+        pyi_cmd.extend(["--distpath", str(DIST_DIR / "linux_tmp")])
 
     if (ROOT / "opendeskcast.ico").is_file() and sys.platform == "win32":
         pyi_cmd.extend(["--icon", str(ROOT / "opendeskcast.ico"), "--noconsole"])
@@ -146,10 +148,19 @@ def build() -> Path:
             shutil.move(str(DIST_DIR / "OpenDeskCast"), str(pkg_root))
     else:
         pkg_root = DIST_DIR / "OpenDeskCast-linux"
-        if (DIST_DIR / "OpenDeskCast").exists():
+        if pkg_root.exists():
+            shutil.rmtree(pkg_root)
+        src_linux = DIST_DIR / "linux_tmp" / "OpenDeskCast"
+        if src_linux.exists():
+            shutil.move(str(src_linux), str(pkg_root))
+        elif (DIST_DIR / "OpenDeskCast").exists():
             shutil.move(str(DIST_DIR / "OpenDeskCast"), str(pkg_root))
+        if (DIST_DIR / "linux_tmp").exists():
+            shutil.rmtree(DIST_DIR / "linux_tmp")
 
     shutil.copytree(ROOT / "static", pkg_root / "static", dirs_exist_ok=True)
+    if (ROOT / "drivers").exists() and sys.platform == "win32":
+        shutil.copytree(ROOT / "drivers", pkg_root / "drivers", dirs_exist_ok=True)
     if (ROOT / "VERSION").is_file():
         shutil.copy2(ROOT / "VERSION", pkg_root / "VERSION")
 

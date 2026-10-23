@@ -70,7 +70,7 @@ def _new_pin() -> str:
 @dataclass
 class HostState:
     monitor_id: int = 0
-    audio_device_id: str = "default"
+    audio_device_id: str = "cast"
     fps: int = 30
     quality: int = 80
     scale: float = 1.0
@@ -212,9 +212,18 @@ def api_status(request: Request, port: int = Query(default=DEFAULT_PORT)) -> dic
         "session_pin": host_state.session_pin,
         "monitors": list_monitors(),
         "audio_devices": audio_streamer.list_audio_devices(),
+        "has_virtual_audio_driver": audio_streamer.device_manager.has_virtual_cable(),
         "settings": asdict(host_state),
         "connected_viewers": len(active_viewers),
     }
+
+
+@app.post("/api/install-audio-driver")
+def api_install_audio_driver(request: Request) -> dict[str, Any]:
+    _require_localhost(request)
+    from app.audio import launch_driver_installer
+    ok = launch_driver_installer()
+    return {"ok": ok}
 
 
 @app.post("/api/settings")

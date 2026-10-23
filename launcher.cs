@@ -45,6 +45,9 @@ namespace OpenDeskCastLauncher
         public string ScreenShareTitle { get { return Code == "it" ? "Condivisione schermo" : "Screen sharing"; } }
         public string ScreenShareSub { get { return Code == "it" ? "Attiva: desktop | Disattiva: schermo nero privacy" : "Active: desktop | Inactive: privacy black screen"; } }
         public string AudioDevTitle { get { return Code == "it" ? "Uscita Audio" : "Audio Output"; } }
+        public string AudioDevSpeakers { get { return Code == "it" ? "Altoparlanti PC (Locale)" : "PC Speakers (Local)"; } }
+        public string AudioDevReceiver { get { return Code == "it" ? "Dispositivo Ricevente (OpenDeskCast)" : "Receiving Device (OpenDeskCast)"; } }
+        public string InstallDriverBtn { get { return Code == "it" ? "Installa Driver Audio" : "Install Audio Driver"; } }
         public string AudioSubActive { get { return Code == "it" ? "Invia l'uscita audio selezionata allo spettatore" : "Transmit selected audio output to viewer"; } }
         public string AudioSubInactive { get { return Code == "it" ? "Audio disattivato (silenzioso)" : "Audio disabled (silent)"; } }
 
@@ -69,12 +72,6 @@ namespace OpenDeskCastLauncher
         public int Width;
         public int Height;
         public bool IsPrimary;
-    }
-
-    internal sealed class AudioDeviceMeta
-    {
-        public string Id;
-        public string Name;
     }
 
     internal sealed class FluentToggle : Control
@@ -268,7 +265,6 @@ namespace OpenDeskCastLauncher
         private int _lastViewersCount = 0;
         private bool _updatingUi = false;
         private readonly List<MonitorMeta> _monitors = new List<MonitorMeta>();
-        private readonly List<AudioDeviceMeta> _audioDevices = new List<AudioDeviceMeta>();
 
         public MainForm(Process serverProc)
         {
@@ -465,8 +461,9 @@ namespace OpenDeskCastLauncher
             ctrlCard.Controls.Add(_lblAudioDevice);
 
             _cmbAudioDevice = CreateDarkCombo(new Point(184, 28), 154);
-            _cmbAudioDevice.Items.Add("Default");
-            _cmbAudioDevice.SelectedIndex = 0;
+            _cmbAudioDevice.Items.Add("Altoparlanti PC (Locale)");
+            _cmbAudioDevice.Items.Add("Dispositivo Ricevente (OpenDeskCast)");
+            _cmbAudioDevice.SelectedIndex = 1;
             _cmbAudioDevice.SelectedIndexChanged += (s, e) => PushSettings();
             ctrlCard.Controls.Add(_cmbAudioDevice);
 
@@ -679,18 +676,14 @@ namespace OpenDeskCastLauncher
 
         private void RebuildAudioDeviceNames()
         {
-            if (_audioDevices.Count == 0) return;
-            int prevIdx = Math.Max(0, _cmbAudioDevice.SelectedIndex);
+            LangPack lp = CurrentLang();
+            int prevIdx = _cmbAudioDevice.SelectedIndex;
+            if (prevIdx < 0) prevIdx = 1;
             _updatingUi = true;
             _cmbAudioDevice.Items.Clear();
-            foreach (AudioDeviceMeta d in _audioDevices)
-            {
-                _cmbAudioDevice.Items.Add(d.Name);
-            }
-            if (_cmbAudioDevice.Items.Count > 0)
-            {
-                _cmbAudioDevice.SelectedIndex = Math.Min(prevIdx, _cmbAudioDevice.Items.Count - 1);
-            }
+            _cmbAudioDevice.Items.Add(lp.AudioDevSpeakers);
+            _cmbAudioDevice.Items.Add(lp.AudioDevReceiver);
+            _cmbAudioDevice.SelectedIndex = Math.Min(prevIdx, 1);
             _updatingUi = false;
         }
 
@@ -745,7 +738,7 @@ namespace OpenDeskCastLauncher
             using (Form dlg = new Form())
             {
                 dlg.Text = isIt ? "OpenDeskCast — Come collegare uno Spettatore" : "OpenDeskCast — Connection Guide";
-                dlg.ClientSize = new Size(520, 340);
+                dlg.ClientSize = new Size(520, 405);
                 dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dlg.MaximizeBox = false;
                 dlg.MinimizeBox = false;
@@ -837,11 +830,48 @@ namespace OpenDeskCastLauncher
                 box3.Controls.Add(b3);
                 dlg.Controls.Add(box3);
 
+                FluentCard box4 = new FluentCard { Location = new Point(16, 296), Size = new Size(488, 56) };
+                Label t4 = new Label
+                {
+                    Text = isIt ? "4. Uscita Audio Virtuale (OpenDeskCast)" : "4. Virtual Audio Output (OpenDeskCast)",
+                    Font = new Font("Segoe UI Semibold", 9.2F, FontStyle.Bold),
+                    ForeColor = Color.FromArgb(76, 194, 255),
+                    Location = new Point(12, 6),
+                    Size = new Size(330, 18)
+                };
+                Label b4 = new Label
+                {
+                    Text = isIt
+                        ? "Silenzia gli altoparlanti del PC senza mutare il volume master di sistema."
+                        : "Silences PC speakers without muting Windows master volume.",
+                    Font = new Font("Segoe UI", 8F),
+                    ForeColor = Color.FromArgb(215, 215, 215),
+                    Location = new Point(12, 26),
+                    Size = new Size(330, 24)
+                };
+                Button btnInstallDriver = new Button
+                {
+                    Text = isIt ? "Installa Driver" : "Install Driver",
+                    Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
+                    Location = new Point(348, 12),
+                    Size = new Size(128, 30),
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(0, 120, 215),
+                    ForeColor = Color.White,
+                    Cursor = Cursors.Hand
+                };
+                btnInstallDriver.FlatAppearance.BorderSize = 0;
+                btnInstallDriver.Click += (s, e) => TryInstallVirtualAudioDriver();
+                box4.Controls.Add(t4);
+                box4.Controls.Add(b4);
+                box4.Controls.Add(btnInstallDriver);
+                dlg.Controls.Add(box4);
+
                 Button btnOk = new Button
                 {
                     Text = "OK",
                     Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                    Location = new Point(414, 298),
+                    Location = new Point(414, 362),
                     Size = new Size(90, 30),
                     FlatStyle = FlatStyle.Flat,
                     BackColor = Color.FromArgb(52, 52, 52),
@@ -853,6 +883,47 @@ namespace OpenDeskCastLauncher
                 dlg.Controls.Add(btnOk);
 
                 dlg.ShowDialog(this);
+            }
+        }
+
+        private void TryInstallVirtualAudioDriver()
+        {
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string exePath = Path.Combine(baseDir, "drivers", "vbcable", "VBCABLE_Setup_x64.exe");
+                if (File.Exists(exePath))
+                {
+                    ProcessStartInfo psi = new ProcessStartInfo
+                    {
+                        FileName = exePath,
+                        Arguments = "-i -h",
+                        Verb = "runas",
+                        UseShellExecute = true
+                    };
+                    Process.Start(psi);
+                    MessageBox.Show(
+                        CurrentLang().Code == "it"
+                            ? "Installazione avviata! Conferma la richiesta di Controllo Account Utente (UAC)."
+                            : "Installation started! Confirm the User Account Control (UAC) prompt.",
+                        "OpenDeskCast",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information
+                    );
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "File driver non trovato in: " + exePath,
+                        "OpenDeskCast",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Warning
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "OpenDeskCast", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -996,24 +1067,16 @@ namespace OpenDeskCastLauncher
                         RebuildMonitorNames();
                     }
 
-                    Match mAudioBlock = Regex.Match(json, "\"audio_devices\"\\s*:\\s*\\[(.*?)\\]", RegexOptions.Singleline);
-                    if (mAudioBlock.Success)
+                    Match mAudDev = Regex.Match(json, "\"audio_device_id\"\\s*:\\s*\"([^\"]+)\"");
+                    if (mAudDev.Success)
                     {
-                        MatchCollection mDevs = Regex.Matches(
-                            mAudioBlock.Groups[1].Value,
-                            "\\{\\s*\"id\"\\s*:\\s*\"([^\"]+)\"\\s*,\\s*\"name\"\\s*:\\s*\"([^\"]+)\"\\s*\\}"
-                        );
-                        if (forceReload || mDevs.Count != _audioDevices.Count)
+                        string dev = mAudDev.Groups[1].Value;
+                        int targetIdx = (dev == "speakers") ? 0 : 1;
+                        if (_cmbAudioDevice.SelectedIndex != targetIdx && _cmbAudioDevice.Items.Count > targetIdx)
                         {
-                            _audioDevices.Clear();
-                            foreach (Match md in mDevs)
-                            {
-                                AudioDeviceMeta adm = new AudioDeviceMeta();
-                                adm.Id = md.Groups[1].Value;
-                                adm.Name = Regex.Unescape(md.Groups[2].Value);
-                                _audioDevices.Add(adm);
-                            }
-                            RebuildAudioDeviceNames();
+                            _updatingUi = true;
+                            _cmbAudioDevice.SelectedIndex = targetIdx;
+                            _updatingUi = false;
                         }
                     }
                 }
@@ -1043,9 +1106,7 @@ namespace OpenDeskCastLauncher
                 int monId = (_cmbMonitor.SelectedIndex >= 0 && _cmbMonitor.SelectedIndex < _monitors.Count)
                     ? _monitors[_cmbMonitor.SelectedIndex].Id
                     : 0;
-                string audioDevId = (_cmbAudioDevice.SelectedIndex >= 0 && _cmbAudioDevice.SelectedIndex < _audioDevices.Count)
-                    ? _audioDevices[_cmbAudioDevice.SelectedIndex].Id
-                    : "default";
+                string audioDevId = _cmbAudioDevice.SelectedIndex == 0 ? "speakers" : "cast";
                 int[] fpsVals = new int[] { 15, 30, 45, 60 };
                 int[] qualVals = new int[] { 50, 60, 80, 90, 100 };
                 string[] scaleVals = new string[] { "0.5", "0.6", "0.8", "0.9", "1.0" };

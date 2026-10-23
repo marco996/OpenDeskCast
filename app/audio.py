@@ -140,6 +140,32 @@ if sys.platform == "win32":
                 ),
             ]
 
+        CLSID_PolicyConfigClient = GUID("{870AF99C-171D-4F9E-AF0D-E63DF40C2BC9}")
+        IID_IPolicyConfig = GUID("{F8679F50-850A-41CF-9C72-430F290290C8}")
+
+        class IPolicyConfig(IUnknown):
+            _case_insensitive_ = True
+            _iid_ = IID_IPolicyConfig
+            _methods_ = [
+                COMMETHOD([], HRESULT, "GetMixFormat"),
+                COMMETHOD([], HRESULT, "GetDeviceFormat"),
+                COMMETHOD([], HRESULT, "ResetDeviceFormat"),
+                COMMETHOD([], HRESULT, "SetDeviceFormat"),
+                COMMETHOD([], HRESULT, "GetProcessingPeriod"),
+                COMMETHOD([], HRESULT, "SetProcessingPeriod"),
+                COMMETHOD([], HRESULT, "GetShareMode"),
+                COMMETHOD([], HRESULT, "SetShareMode"),
+                COMMETHOD([], HRESULT, "GetPropertyValue"),
+                COMMETHOD([], HRESULT, "SetPropertyValue"),
+                COMMETHOD(
+                    [],
+                    HRESULT,
+                    "SetDefaultEndpoint",
+                    (["in"], ctypes.c_wchar_p, "wszDeviceId"),
+                    (["in"], ctypes.c_ulong, "eRole"),
+                ),
+            ]
+
         class IAudioClient(IUnknown):
             _iid_ = IID_IAudioClient
             _methods_ = [
@@ -247,19 +273,103 @@ else:
 
 
 class AudioDeviceManager:
-    """Manages audio sink routing on Linux/macOS while keeping PC speakers unmuted on Windows."""
+    """Manages audio sink routing on Windows and Linux while keeping PC speakers unmuted."""
 
     def __init__(self) -> None:
         self._is_routed = False
+        self._orig_windows_endpoint: str | None = None
+        self._target_cast_endpoint: str | None = None
         self._linux_module_id: str | None = None
         self._linux_orig_sink: str | None = None
         atexit.register(self.restore_audio)
 
+    def get_windows_endpoints(self) -> list[tuple[str, str]]:
+        """Return list of (endpoint_id, friendly_name) for all active render endpoints."""
+        results: list[tuple[str, str]] = []
+        if sys.platform != "win32" or not _WASAPI_AVAILABLE:
+            return results
+        try:
+            comtypes.CoInitialize()
+            enumerator = comtypes.client.CreateObject(
+                CLSID_MMDeviceEnumerator, interface=IMMDeviceEnumerator
+            )
+            col = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)
+            count = col.GetCount()
+            for i in range(count):
+                try:
+                    dev = col.Item(i)
+                    dev_id = str(dev.GetId())
+                    name = f"Audio Endpoint {i+1}"
+                    try:
+                        props_ptr = dev.OpenPropertyStore(STGM_READ)
+                        props = props_ptr.QueryInterface(IPropertyStore)
+                        pv = props.GetValue(byref(PKEY_Device_FriendlyName))
+                        if pv.vt == 31 and pv.pwszVal:
+                            name = str(pv.pwszVal)
+                    except Exception:
+                        pass
+                    results.append((dev_id, name))
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return results
+
+    def find_cast_target_endpoint(self) -> tuple[str | None, str | None]:
+        """Find dedicated virtual cable or fallback silent endpoint."""
+        endpoints = self.get_windows_endpoints()
+        # 1. Look for virtual cable (VB-CABLE, Virtual Audio, OpenDeskCast, Steam Streaming)
+        for did, name in endpoints:
+            nl = name.lower()
+            if any(k in nl for k in ("cable input", "vb-audio", "virtual audio", "opendeskcast", "steam streaming")):
+                return did, name
+        # 2. Look for silent digital/auxiliary output
+        for did, name in endpoints:
+            nl = name.lower()
+            if any(k in nl for k in ("digital output", "s/pdif", "optical")):
+                return did, name
+        return None, None
+
+    def has_virtual_cable(self) -> bool:
+        if sys.platform != "win32":
+            return True  # Native null-sink on Linux
+        endpoints = self.get_windows_endpoints()
+        for _, name in endpoints:
+            nl = name.lower()
+            if any(k in nl for k in ("cable input", "vb-audio", "virtual audio", "opendeskcast", "steam streaming")):
+                return True
+        return False
+
     def route_audio_to_cast(self) -> None:
         if self._is_routed:
             return
-        if sys.platform == "win32":
-            self._is_routed = True
+        if sys.platform == "win32" and _WASAPI_AVAILABLE:
+            try:
+                comtypes.CoInitialize()
+                enumerator = comtypes.client.CreateObject(
+                    CLSID_MMDeviceEnumerator, interface=IMMDeviceEnumerator
+                )
+                try:
+                    def_dev = enumerator.GetDefaultAudioEndpoint(eRender, eConsole)
+                    self._orig_windows_endpoint = str(def_dev.GetId())
+                except Exception:
+                    self._orig_windows_endpoint = None
+
+                target_id, target_name = self.find_cast_target_endpoint()
+                if target_id and target_id != self._orig_windows_endpoint:
+                    self._target_cast_endpoint = target_id
+                    policy = comtypes.CoCreateInstance(
+                        CLSID_PolicyConfigClient,
+                        interface=IPolicyConfig,
+                        clsctx=comtypes.CLSCTX_INPROC_SERVER,
+                    )
+                    for role in (0, 1, 2):
+                        policy.SetDefaultEndpoint(target_id, role)
+                    self._is_routed = True
+                else:
+                    self._is_routed = True
+            except Exception:
+                self._is_routed = True
         elif sys.platform.startswith("linux"):
             try:
                 res = subprocess.run(
@@ -299,7 +409,20 @@ class AudioDeviceManager:
         if not self._is_routed:
             return
         self._is_routed = False
-        if sys.platform.startswith("linux"):
+        if sys.platform == "win32" and _WASAPI_AVAILABLE:
+            try:
+                if self._orig_windows_endpoint:
+                    comtypes.CoInitialize()
+                    policy = comtypes.CoCreateInstance(
+                        CLSID_PolicyConfigClient,
+                        interface=IPolicyConfig,
+                        clsctx=comtypes.CLSCTX_INPROC_SERVER,
+                    )
+                    for role in (0, 1, 2):
+                        policy.SetDefaultEndpoint(self._orig_windows_endpoint, role)
+            except Exception:
+                pass
+        elif sys.platform.startswith("linux"):
             try:
                 if self._linux_orig_sink:
                     subprocess.run(["pactl", "set-default-sink", self._linux_orig_sink], timeout=2)
@@ -507,6 +630,7 @@ class AudioStreamer:
         self.sample_rate = int(sample_rate)
         self.channels = int(channels)
         self.device_id = "default"
+        self.destination = "cast"  # "cast" (remote) or "speakers" (local PC)
         self._subscribers: Set[asyncio.Queue[bytes]] = set()
         self._worker: threading.Thread | None = None
         self._lock = threading.Lock()
@@ -514,16 +638,40 @@ class AudioStreamer:
         self.device_manager = AudioDeviceManager()
         self._ffmpeg = shutil.which("ffmpeg")
 
-    def set_device(self, device_id: str) -> None:
+    def set_destination(self, destination: str) -> None:
         with self._lock:
-            did = str(device_id or "default")
-            if self.device_id == did:
+            dest = "speakers" if destination == "speakers" else "cast"
+            if self.destination == dest:
                 return
-            self.device_id = did
+            self.destination = dest
+            if self.destination == "cast":
+                self.device_manager.route_audio_to_cast()
+                if self.device_manager._target_cast_endpoint:
+                    self.device_id = self.device_manager._target_cast_endpoint
+                else:
+                    self.device_id = "default"
+            else:
+                self.device_manager.restore_audio()
+                self.device_id = "default"
             if self._worker is not None:
                 self._stop_worker()
                 if self._subscribers:
                     self._start_worker()
+
+    def set_device(self, device_id: str) -> None:
+        # Backward compatibility for endpoints passing device_id
+        if device_id in ("speakers", "cast"):
+            self.set_destination(device_id)
+        else:
+            with self._lock:
+                did = str(device_id or "default")
+                if self.device_id == did:
+                    return
+                self.device_id = did
+                if self._worker is not None:
+                    self._stop_worker()
+                    if self._subscribers:
+                        self._start_worker()
 
     def _broadcast_chunk(self, chunk: bytes) -> None:
         if not self._subscribers or not self._loop or self._loop.is_closed():
@@ -627,7 +775,7 @@ class AudioStreamer:
             except RuntimeError:
                 pass
             self._subscribers.add(queue)
-            if audio_enabled:
+            if audio_enabled and self.destination == "cast":
                 self.device_manager.route_audio_to_cast()
             if self._worker is None or not self._worker.is_alive():
                 self._start_worker()
@@ -641,7 +789,7 @@ class AudioStreamer:
 
     def on_audio_enabled_changed(self, enabled: bool) -> None:
         with self._lock:
-            if enabled:
+            if enabled and self.destination == "cast":
                 self.device_manager.route_audio_to_cast()
             else:
                 self.device_manager.restore_audio()
@@ -653,64 +801,16 @@ class AudioStreamer:
             self.device_manager.restore_audio()
 
     def list_audio_devices(self) -> list[dict[str, str]]:
-        """List available audio render / output endpoints across Windows, Linux, and macOS."""
-        devices: list[dict[str, str]] = [{"id": "default", "name": "Dispositivo Predefinito (Default)"}]
-        if sys.platform == "win32" and _WASAPI_AVAILABLE:
-            try:
-                comtypes.CoInitialize()
-                enumerator = comtypes.client.CreateObject(
-                    CLSID_MMDeviceEnumerator, interface=IMMDeviceEnumerator
-                )
-                col = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE)
-                count = col.GetCount()
-                for i in range(count):
-                    try:
-                        dev = col.Item(i)
-                        dev_id = str(dev.GetId())
-                        name = f"Uscita Audio {i + 1}"
-                        try:
-                            props_ptr = dev.OpenPropertyStore(STGM_READ)
-                            props = props_ptr.QueryInterface(IPropertyStore)
-                            pv = props.GetValue(byref(PKEY_Device_FriendlyName))
-                            if pv.vt == 31 and pv.pwszVal:
-                                name = str(pv.pwszVal)
-                        except Exception:
-                            pass
-                        devices.append({"id": dev_id, "name": name})
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-            finally:
-                try:
-                    comtypes.CoUninitialize()
-                except Exception:
-                    pass
-        elif sys.platform.startswith("linux"):
-            try:
-                res = subprocess.run(
-                    ["pactl", "list", "short", "sinks"],
-                    capture_output=True,
-                    text=True,
-                    timeout=2,
-                )
-                if res.returncode == 0:
-                    for line in res.stdout.strip().splitlines():
-                        parts = line.split("\t")
-                        if len(parts) >= 2:
-                            sink_name = parts[1]
-                            devices.append({"id": sink_name, "name": sink_name})
-            except Exception:
-                pass
-        return devices
+        """Return the two logical destinations: local PC speakers vs remote cast device."""
+        return [
+            {"id": "speakers", "name": "Altoparlanti PC (Locale)"},
+            {"id": "cast", "name": "Dispositivo Ricevente (OpenDeskCast)"},
+        ]
 
     def pick_preferred_device(self, requested: str | None = None) -> str | None:
-        devices = self.list_audio_devices()
-        if not devices:
-            return None
-        if requested and requested in devices:
+        if requested in ("speakers", "cast"):
             return requested
-        return devices[0]
+        return "cast"
 
     async def stream_pcm_chunks(
         self, device_name: str | None = None
@@ -724,3 +824,25 @@ class AudioStreamer:
                 yield chunk
         finally:
             self.remove_subscriber(q)
+
+
+def launch_driver_installer() -> bool:
+    """Launch VB-CABLE driver setup with elevated privileges."""
+    if sys.platform != "win32":
+        return False
+    from pathlib import Path
+    base_dir = Path(__file__).resolve().parent.parent
+    exe_path = base_dir / "drivers" / "vbcable" / "VBCABLE_Setup_x64.exe"
+    if not exe_path.is_file():
+        return False
+    try:
+        cmd = [
+            "powershell",
+            "-NoProfile",
+            "-Command",
+            f"Start-Process -FilePath '{exe_path}' -ArgumentList '-i -h' -Verb RunAs",
+        ]
+        subprocess.Popen(cmd)
+        return True
+    except Exception:
+        return False

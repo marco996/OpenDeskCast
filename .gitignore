@@ -7,3 +7,5 @@ engine/
 *.spec
 .venv/
 OpenDeskCast.exe
+scratch/
+
