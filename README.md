@@ -1,47 +1,55 @@
 # OpenDeskCast
 
-OpenDeskCast è un'applicazione open source multipiattaforma (Windows, Linux, macOS) pensata per la trasmissione dello schermo da un computer verso qualsiasi dispositivo dotato di browser web moderno (Chrome, Safari, Edge, Firefox, Brave).
+OpenDeskCast is an open-source, cross-platform desktop application (Windows, Linux, macOS) designed for low-latency screen and audio streaming from a computer to any device equipped with a modern web browser (Chrome, Safari, Edge, Firefox, Brave).
+
+<p align="center">
+  <img src="screenshot.png" alt="OpenDeskCast Control Panel" width="600" />
+</p>
+
+<p align="center">
+  <b>English</b> | <a href="README_IT.md">Italiano</a>
+</p>
 
 ---
 
-## Caratteristiche Principali
+## Key Features
 
-- **Zero installazione per lo spettatore**: Lo spettatore deve solo inquadrare il QR oppure raggiungere l'indirizzo IP locale indicato nell'interfaccia.
-- **Controllo Totale dal PC**: Tutte le impostazioni (scelta del monitor, FPS, qualità, attivazione audio) sono regolate esclusivamente dal PC trasmittente. Lo spettatore è uno schermo passivo come quando si utilizza un cavo HDMI.
-- **Supporto Multi-Monitor Reale**: Riconosce e seleziona individualmente ciascun monitor fisico collegato al PC.
-- **Streaming Audio Sincronizzato**: Quando l'audio è attivo dal PC, il flusso audio di sistema viene instradato verso la trasmissione e le casse locali del PC vengono silenziate; disattivando l'audio, gli altoparlanti locali tornano immediatamente attivi.
-- **Sicurezza dagli spettatori non desiderati**: Accesso protetto tramite QR Code con token crittografico o digitazione manuale di un PIN a 4 cifre.
-- **Pannello di Regia Riservato a Localhost**: Le API amministrative e il pannello di controllo sono inaccessibili dalla rete esterna, garantendo la totale riservatezza della regia.
-- **Pacchetto Standalone Zero-Dipendenze**: Nessuna necessità di installare Python, .NET o runtime esterni per l'utente finale.
+- **Zero Installation for Viewers**: The viewer only needs to scan the QR Code or navigate to the local IP address displayed on screen.
+- **Total Control from the Host PC**: All streaming parameters (display selection, FPS, quality, audio routing) are controlled exclusively from the host computer. The viewer functions as a passive receiver, just like an HDMI display.
+- **True Multi-Monitor Support**: Automatically detects and lets you individually select any physical display connected to your computer.
+- **Synchronized Audio Streaming**: When cast audio is enabled, system audio streams directly to the receiver while host PC speakers are cleanly muted; turning off cast audio restores host speakers instantly.
+- **Protection from Unwanted Viewers**: Secured by default via session QR codes with cryptographic tokens or manual 4-digit PIN authentication.
+- **Host Control Panel Restricted to Localhost**: Administrative APIs and configuration controls are completely inaccessible from the external network, guaranteeing full broadcast privacy.
+- **Zero-Dependency Standalone Package**: No Python, .NET, or external runtimes required for end users.
 
 ---
 
-## Installazione ed Esecuzione
+## Installation & Usage
 
 ### Windows
-1. Scarica direttamente l'installer [**`OpenDeskCast-v1.0.0-windows-x64.msi`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.0/OpenDeskCast-v1.0.0-windows-x64.msi) (oppure consulta la pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases)).
-2. Avvia l'installer: crea automaticamente il collegamento nel Menu Start e sul Desktop.
-3. Fai doppio clic su **OpenDeskCast**: si apre la finestra di regia e viene visualizzato il QR Code per connettere gli spettatori.
+1. Download the [**`OpenDeskCast-v1.0.0-windows-x64.msi`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.0/OpenDeskCast-v1.0.0-windows-x64.msi) installer directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
+2. Run the installer: automatically creates Start Menu and Desktop shortcuts.
+3. Double-click **OpenDeskCast**: the control panel opens, showing the QR Code for viewers to connect.
 
 ### Linux (Ubuntu / Debian / Mint)
-1. Scarica direttamente il pacchetto [**`opendeskcast_1.0.0_amd64.deb`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.0/opendeskcast_1.0.0_amd64.deb) (oppure consulta la pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases)).
-2. Installa con un solo comando da terminale (installa automaticamente anche le dipendenze di sistema):
+1. Download the [**`opendeskcast_1.0.0_amd64.deb`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.0/opendeskcast_1.0.0_amd64.deb) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
+2. Install via terminal with a single command (automatically resolves system dependencies):
    ```bash
    sudo apt install ./opendeskcast_1.0.0_amd64.deb
    ```
-3. Avvia **OpenDeskCast** dal menù delle applicazioni del tuo computer o digitando `opendeskcast` nel terminale.
+3. Launch **OpenDeskCast** from your application menu or by running `opendeskcast` in the terminal.
 
-*(In alternativa, per avvio rapido da sorgente su qualsiasi distribuzione Linux: `./run_linux.sh`)*
+*(Alternatively, to run from source on any Linux distribution: `./run_linux.sh`)*
 
 ### macOS
-1. Scarica direttamente il pacchetto [**`OpenDeskCast-v1.0.0-macos.zip`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.0/OpenDeskCast-v1.0.0-macos.zip) (oppure consulta la pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases)).
-2. Estrai il file zip e trascina **OpenDeskCast.app** nella cartella **Applicazioni**.
-3. Avvia **OpenDeskCast** dal Launchpad o da Applicazioni.
+1. Download the [**`OpenDeskCast-v1.0.0-macos.zip`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.0/OpenDeskCast-v1.0.0-macos.zip) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
+2. Extract the zip file and drag **OpenDeskCast.app** into your **Applications** folder.
+3. Launch **OpenDeskCast** from Launchpad or Applications.
 
-*(In alternativa, per avvio rapido da sorgente su macOS: `./run_macos.sh`)*
+*(Alternatively, to run from source on macOS: `./run_macos.sh`)*
 
 ---
 
-## Licenza / License
+## License
 
-Distribuito sotto licenza **MIT**. Consulta il file [LICENSE](LICENSE) per i dettagli completi.
+Distributed under the **MIT** License. See [LICENSE](LICENSE) for full details.
