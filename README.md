@@ -45,6 +45,7 @@ OpenDeskCast is an open-source, cross-platform desktop application (Windows, Lin
 1. Download the [**`OpenDeskCast-v1.0.0-macos.zip`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.0/OpenDeskCast-v1.0.0-macos.zip) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
 2. Extract the zip file and drag **OpenDeskCast.app** into your **Applications** folder.
 3. Launch **OpenDeskCast** from Launchpad or Applications.
+   *(If macOS blocks opening unverified apps, right-click the app and choose **Open**, or run: `xattr -cr /Applications/OpenDeskCast.app`)*
 
 *(Alternatively, to run from source on macOS: `./run_macos.sh`)*
 
