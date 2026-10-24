@@ -130,6 +130,14 @@ def generate_wxs(version: str, wxs_path: Path) -> None:
         f'        <Shortcut Id="StartMenuShortcut" Name="OpenDeskCast" Target="[!{exe_file_id}]" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" IconIndex="0" />',
         '      </Component>',
         '    </StandardDirectory>',
+        '    <CustomAction Id="UninstallAudioDriver"',
+        '                  Directory="INSTALLFOLDER"',
+        '                  ExeCommand="cmd.exe /c &quot;&quot;[INSTALLFOLDER]drivers\\vbcable\\uninstall_driver.bat&quot;&quot;"',
+        '                  Execute="deferred"',
+        '                  Return="ignore" />',
+        '    <InstallExecuteSequence>',
+        '      <Custom Action="UninstallAudioDriver" Before="RemoveFiles" Condition="Installed AND (REMOVE=&quot;ALL&quot;) AND NOT UPGRADINGPRODUCTCODE" />',
+        '    </InstallExecuteSequence>',
         '    <Feature Id="MainFeature" Title="OpenDeskCast" Level="1">',
     ])
 

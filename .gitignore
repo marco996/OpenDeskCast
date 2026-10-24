@@ -8,4 +8,6 @@ engine/
 .venv/
 OpenDeskCast.exe
 scratch/
+.installed_by_opendeskcast
+.driver_installed_by_app
 

@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 from fastapi.testclient import TestClient
 
 from app.server import app, APP_VERSION, host_state
+from app.audio import mark_driver_installed_by_app
 from app.updater import check_for_updates, parse_version_tuple, pick_os_asset
 
 
@@ -142,6 +143,46 @@ class TestReleaseArtifacts(unittest.TestCase):
             names = z.namelist()
             self.assertTrue(any("OpenDeskCast.app" in n for n in names))
             self.assertTrue(any("Info.plist" in n for n in names))
+
+
+class TestDriverConditionalLifecycle(unittest.TestCase):
+    def test_uninstall_script_exists(self):
+        script = ROOT / "drivers" / "vbcable" / "uninstall_driver.bat"
+        self.assertTrue(script.is_file(), "uninstall_driver.bat must be present in drivers/vbcable")
+
+    def test_marker_creation_and_removal(self):
+        if sys.platform != "win32":
+            return
+        import winreg
+        import os
+
+        # Verify marking sets registry and/or marker files
+        mark_driver_installed_by_app()
+        found = False
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\OpenDeskCast") as k:
+                val, _ = winreg.QueryValueEx(k, "DriverInstalledByApp")
+                if val == 1:
+                    found = True
+        except Exception:
+            pass
+
+        local_app = os.environ.get("LOCALAPPDATA")
+        if local_app and (Path(local_app) / "OpenDeskCast" / ".driver_installed_by_app").is_file():
+            found = True
+
+        self.assertTrue(found, "Marker should be recorded after mark_driver_installed_by_app()")
+
+        # Clean up test marker
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\OpenDeskCast", 0, winreg.KEY_SET_VALUE) as k:
+                winreg.DeleteValue(k, "DriverInstalledByApp")
+        except Exception:
+            pass
+        if local_app:
+            mf = Path(local_app) / "OpenDeskCast" / ".driver_installed_by_app"
+            if mf.is_file():
+                mf.unlink()
 
 
 if __name__ == "__main__":

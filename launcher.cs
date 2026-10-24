@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 [assembly: AssemblyTitle("OpenDeskCast")]
 [assembly: AssemblyDescription("OpenDeskCast — High-Performance Local Screen Casting Server")]
@@ -922,6 +923,42 @@ namespace OpenDeskCastLauncher
             }
         }
 
+        private static void MarkDriverInstalledByApp()
+        {
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\OpenDeskCast"))
+                {
+                    if (key != null) key.SetValue("DriverInstalledByApp", 1, RegistryValueKind.DWord);
+                }
+            }
+            catch { }
+
+            try
+            {
+                string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                if (!string.IsNullOrEmpty(localApp))
+                {
+                    string markerDir = Path.Combine(localApp, "OpenDeskCast");
+                    Directory.CreateDirectory(markerDir);
+                    File.WriteAllText(Path.Combine(markerDir, ".driver_installed_by_app"), "1");
+                }
+            }
+            catch { }
+
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string mfile = Path.Combine(baseDir, "drivers", "vbcable", ".installed_by_opendeskcast");
+                string pdir = Path.GetDirectoryName(mfile);
+                if (Directory.Exists(pdir))
+                {
+                    File.WriteAllText(mfile, "1");
+                }
+            }
+            catch { }
+        }
+
         private void TryInstallVirtualAudioDriver()
         {
             try
@@ -930,6 +967,7 @@ namespace OpenDeskCastLauncher
                 string exePath = Path.Combine(baseDir, "drivers", "vbcable", "VBCABLE_Setup_x64.exe");
                 if (File.Exists(exePath))
                 {
+                    MarkDriverInstalledByApp();
                     ProcessStartInfo psi = new ProcessStartInfo
                     {
                         FileName = exePath,

@@ -851,8 +851,40 @@ class AudioStreamer:
             self.remove_subscriber(q)
 
 
+def mark_driver_installed_by_app() -> None:
+    """Record that OpenDeskCast initiated the VB-CABLE driver installation."""
+    if sys.platform != "win32":
+        return
+    import os
+    from pathlib import Path
+    import winreg
+
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\OpenDeskCast") as key:
+            winreg.SetValueEx(key, "DriverInstalledByApp", 0, winreg.REG_DWORD, 1)
+    except Exception:
+        pass
+
+    try:
+        local_app = os.environ.get("LOCALAPPDATA")
+        if local_app:
+            marker_dir = Path(local_app) / "OpenDeskCast"
+            marker_dir.mkdir(parents=True, exist_ok=True)
+            (marker_dir / ".driver_installed_by_app").write_text("1", encoding="utf-8")
+    except Exception:
+        pass
+
+    try:
+        base_dir = Path(__file__).resolve().parent.parent
+        mfile = base_dir / "drivers" / "vbcable" / ".installed_by_opendeskcast"
+        if mfile.parent.is_dir():
+            mfile.write_text("1", encoding="utf-8")
+    except Exception:
+        pass
+
+
 def launch_driver_installer() -> bool:
-    """Launch VB-CABLE driver setup with elevated privileges."""
+    """Launch VB-CABLE driver setup with elevated privileges and mark for clean uninstall."""
     if sys.platform != "win32":
         return False
     from pathlib import Path
@@ -861,6 +893,7 @@ def launch_driver_installer() -> bool:
     if not exe_path.is_file():
         return False
     try:
+        mark_driver_installed_by_app()
         cmd = [
             "powershell",
             "-NoProfile",
