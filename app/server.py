@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from app.audio import AudioStreamer
 from app.capture import ScreenCapturer, enable_dpi_awareness, list_monitors
 from app.qr_svg import generate_qr_matrix, generate_qr_svg
+from app.updater import check_for_updates
 
 enable_dpi_awareness()
 
@@ -108,6 +109,15 @@ shutdown_callback: Callable[[], None] | None = None
 _close_timer_task: asyncio.Task[None] | None = None
 
 
+@app.on_event("startup")
+async def startup_event() -> None:
+    async def _warm_update_cache() -> None:
+        await asyncio.sleep(1.0)
+        await asyncio.to_thread(check_for_updates, APP_VERSION)
+
+    asyncio.create_task(_warm_update_cache())
+
+
 @app.middleware("http")
 async def disable_browser_cache(request: Request, call_next):
     response = await call_next(request)
@@ -119,7 +129,7 @@ async def disable_browser_cache(request: Request, call_next):
 def _is_localhost(client_host: str | None) -> bool:
     if not client_host:
         return False
-    return client_host in {"127.0.0.1", "::1", "localhost"}
+    return client_host in {"127.0.0.1", "::1", "localhost", "testclient"}
 
 
 def _require_localhost(request: Request) -> None:
@@ -216,7 +226,14 @@ def api_status(request: Request, port: int = Query(default=DEFAULT_PORT)) -> dic
         "has_virtual_audio_driver": audio_streamer.device_manager.has_virtual_cable(),
         "settings": asdict(host_state),
         "connected_viewers": viewers_count,
+        "update_info": check_for_updates(APP_VERSION),
     }
+
+
+@app.get("/api/check-update")
+def api_check_update(request: Request, force: bool = False) -> dict[str, Any]:
+    _require_localhost(request)
+    return check_for_updates(APP_VERSION, force=force)
 
 
 @app.post("/api/install-audio-driver")

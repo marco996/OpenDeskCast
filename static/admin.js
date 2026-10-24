@@ -262,6 +262,23 @@
       chkAudio.checked = Boolean(data.settings.audio_enabled);
       chkLock.checked = Boolean(data.settings.lock_new_viewers);
       updateAudioSub();
+
+      const updateInfo = data.update_info;
+      const updateBadge = document.getElementById("btn-update-badge");
+      const updateBadgeVer = document.getElementById("update-badge-ver");
+      if (updateBadge) {
+        if (updateInfo && updateInfo.update_available) {
+          updateBadge.classList.remove("hidden");
+          if (updateBadgeVer && updateInfo.latest_version) {
+            updateBadgeVer.textContent = `v${updateInfo.latest_version}`;
+          }
+          const targetUrl = updateInfo.download_url || updateInfo.release_url || "https://github.com/marco996/OpenDeskCast/releases/latest";
+          updateBadge.href = targetUrl;
+          updateBadge.title = (currentLang === "it" ? "Aggiornamento disponibile: " : "Update available: ") + (updateInfo.latest_version ? `v${updateInfo.latest_version}` : "");
+        } else {
+          updateBadge.classList.add("hidden");
+        }
+      }
     } catch (_) {}
   }
 

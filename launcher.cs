@@ -233,6 +233,9 @@ namespace OpenDeskCastLauncher
         private readonly Label _lblUrl;
         private readonly Label _lblBadge;
         private readonly Button _btnHelp;
+        private readonly Button _btnUpdate;
+        private string _updateUrl = "";
+        private string _latestVersion = "";
         private readonly ComboBox _cmbLang;
         private readonly Label _lblQrTitle;
         private readonly Button _btnRotate;
@@ -300,6 +303,34 @@ namespace OpenDeskCastLauncher
                 Location = new Point(16, 13)
             };
             Controls.Add(lblTitle);
+
+            _btnUpdate = new Button
+            {
+                Text = "🚀 Update",
+                Font = new Font("Segoe UI Semibold", 8.2F, FontStyle.Bold),
+                Location = new Point(126, 12),
+                Size = new Size(86, 24),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(0, 120, 212),
+                ForeColor = Color.White,
+                TabStop = false,
+                Cursor = Cursors.Hand,
+                Visible = false
+            };
+            _btnUpdate.FlatAppearance.BorderColor = Color.FromArgb(76, 194, 255);
+            _btnUpdate.Click += (s, e) =>
+            {
+                ActiveControl = null;
+                try
+                {
+                    string target = !string.IsNullOrEmpty(_updateUrl)
+                        ? _updateUrl
+                        : "https://github.com/marco996/OpenDeskCast/releases/latest";
+                    Process.Start(target);
+                }
+                catch { }
+            };
+            Controls.Add(_btnUpdate);
 
             _btnHelp = new Button
             {
@@ -978,6 +1009,33 @@ namespace OpenDeskCastLauncher
             return cmb;
         }
 
+        private void SetUpdateAvailable(bool available, string version, string downloadUrl)
+        {
+            _updateUrl = downloadUrl;
+            _latestVersion = version;
+            if (_btnUpdate.Visible == available) return;
+            _btnUpdate.Visible = available;
+            if (available)
+            {
+                _btnUpdate.Text = "🚀 " + (!string.IsNullOrEmpty(version) ? "v" + version : "Update");
+                _btnHelp.Location = new Point(218, 12);
+                _btnHelp.Size = new Size(118, 24);
+                _cmbLang.Location = new Point(342, 12);
+                _cmbLang.Size = new Size(112, 24);
+                _lblBadge.Location = new Point(460, 12);
+                _lblBadge.Size = new Size(144, 24);
+            }
+            else
+            {
+                _btnHelp.Location = new Point(164, 12);
+                _btnHelp.Size = new Size(134, 24);
+                _cmbLang.Location = new Point(304, 12);
+                _cmbLang.Size = new Size(132, 24);
+                _lblBadge.Location = new Point(444, 12);
+                _lblBadge.Size = new Size(160, 24);
+            }
+        }
+
         private void RefreshMonitorsForce()
         {
             PollStatus(true);
@@ -1001,6 +1059,20 @@ namespace OpenDeskCastLauncher
                             UpdateBadgeText(count);
                             RebuildAudioDeviceNames();
                         }
+                    }
+
+                    Match mUpdate = Regex.Match(json, "\"update_available\"\\s*:\\s*(true|false)", RegexOptions.IgnoreCase);
+                    if (mUpdate.Success && mUpdate.Groups[1].Value.ToLower() == "true")
+                    {
+                        Match mVer = Regex.Match(json, "\"latest_version\"\\s*:\\s*\"([^\"]+)\"");
+                        Match mDown = Regex.Match(json, "\"download_url\"\\s*:\\s*\"([^\"]+)\"");
+                        string ver = mVer.Success ? mVer.Groups[1].Value : "";
+                        string down = mDown.Success ? mDown.Groups[1].Value : "";
+                        SetUpdateAvailable(true, ver, down);
+                    }
+                    else
+                    {
+                        SetUpdateAvailable(false, "", "");
                     }
 
                     bool guideNeedsUpdate = false;
