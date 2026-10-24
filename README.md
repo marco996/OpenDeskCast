@@ -27,22 +27,22 @@ OpenDeskCast is an open-source, cross-platform desktop application (Windows, Lin
 ## Installation & Usage
 
 ### Windows
-1. Download the [**`OpenDeskCast-v1.0.1-windows-x64.msi`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.1/OpenDeskCast-v1.0.1-windows-x64.msi) installer directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
+1. Download the [**`OpenDeskCast-v1.0.2-windows-x64.msi`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.2/OpenDeskCast-v1.0.2-windows-x64.msi) installer directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
 2. Run the installer: automatically creates Start Menu and Desktop shortcuts.
 3. Double-click **OpenDeskCast**: the control panel opens, showing the QR Code for viewers to connect.
 
 ### Linux (Ubuntu / Debian / Mint)
-1. Download the [**`opendeskcast_1.0.1_amd64.deb`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.1/opendeskcast_1.0.1_amd64.deb) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
+1. Download the [**`opendeskcast_1.0.2_amd64.deb`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.2/opendeskcast_1.0.2_amd64.deb) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
 2. Install via terminal with a single command (automatically resolves system dependencies):
    ```bash
-   sudo apt install ./opendeskcast_1.0.1_amd64.deb
+   sudo apt install ./opendeskcast_1.0.2_amd64.deb
    ```
 3. Launch **OpenDeskCast** from your application menu or by running `opendeskcast` in the terminal.
 
 *(Alternatively, to run from source on any Linux distribution: `./run_linux.sh`)*
 
 ### macOS
-1. Download the [**`OpenDeskCast-v1.0.1-macos.zip`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.1/OpenDeskCast-v1.0.1-macos.zip) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
+1. Download the [**`OpenDeskCast-v1.0.2-macos.zip`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.2/OpenDeskCast-v1.0.2-macos.zip) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
 2. Extract the zip file and drag **OpenDeskCast.app** into your **Applications** folder.
 3. Launch **OpenDeskCast** from Launchpad or Applications.
    *(If macOS blocks opening unverified apps, right-click the app and choose **Open**, or run: `xattr -cr /Applications/OpenDeskCast.app`)*

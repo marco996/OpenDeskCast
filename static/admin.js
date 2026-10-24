@@ -263,20 +263,27 @@
       chkLock.checked = Boolean(data.settings.lock_new_viewers);
       updateAudioSub();
 
+      // Current Version in bottom right
+      const curVerLabel = document.getElementById("app-current-version");
+      if (curVerLabel && data.app_version) {
+        curVerLabel.textContent = `v${data.app_version}`;
+      }
+
+      // Conditional Update Icon/Button
       const updateInfo = data.update_info;
-      const updateBadge = document.getElementById("btn-update-badge");
-      const updateBadgeVer = document.getElementById("update-badge-ver");
-      if (updateBadge) {
+      const updateDownloadBtn = document.getElementById("btn-update-download");
+      const updateTargetVer = document.getElementById("update-target-ver");
+      if (updateDownloadBtn) {
         if (updateInfo && updateInfo.update_available) {
-          updateBadge.classList.remove("hidden");
-          if (updateBadgeVer && updateInfo.latest_version) {
-            updateBadgeVer.textContent = `v${updateInfo.latest_version}`;
+          updateDownloadBtn.classList.remove("hidden");
+          if (updateTargetVer && updateInfo.latest_version) {
+            updateTargetVer.textContent = `v${updateInfo.latest_version}`;
           }
           const targetUrl = updateInfo.download_url || updateInfo.release_url || "https://github.com/marco996/OpenDeskCast/releases/latest";
-          updateBadge.href = targetUrl;
-          updateBadge.title = (currentLang === "it" ? "Aggiornamento disponibile: " : "Update available: ") + (updateInfo.latest_version ? `v${updateInfo.latest_version}` : "");
+          updateDownloadBtn.href = targetUrl;
+          updateDownloadBtn.title = (currentLang === "it" ? "Scarica aggiornamento " : "Download update ") + (updateInfo.latest_version ? `v${updateInfo.latest_version}` : "");
         } else {
-          updateBadge.classList.add("hidden");
+          updateDownloadBtn.classList.add("hidden");
         }
       }
     } catch (_) {}

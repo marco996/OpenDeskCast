@@ -116,12 +116,13 @@ class TestServerEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertIn("text/html", res.headers.get("content-type", ""))
 
-    def test_admin_html_served_and_contains_update_badge(self):
+    def test_admin_html_served_and_contains_version_elements(self):
         res = self.client.get("/admin")
         self.assertEqual(res.status_code, 200)
         html = res.text
-        self.assertIn("btn-update-badge", html)
-        self.assertIn("fluent-update-badge", html)
+        self.assertIn("app-current-version", html)
+        self.assertIn("btn-update-download", html)
+        self.assertIn("version-footer", html)
 
 
 class TestReleaseArtifacts(unittest.TestCase):

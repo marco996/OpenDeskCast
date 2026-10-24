@@ -16,8 +16,8 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("OpenDeskCast — High-Performance Local Screen Casting Server")]
 [assembly: AssemblyProduct("OpenDeskCast")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 OpenDeskCast Contributors — MIT License")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
+[assembly: AssemblyVersion("1.0.2.0")]
+[assembly: AssemblyFileVersion("1.0.2.0")]
 
 namespace OpenDeskCastLauncher
 {
@@ -234,7 +234,8 @@ namespace OpenDeskCastLauncher
         private readonly Label _lblUrl;
         private readonly Label _lblBadge;
         private readonly Button _btnHelp;
-        private readonly Button _btnUpdate;
+        private readonly Label _lblCurrentVersion;
+        private readonly Button _btnUpdateIcon;
         private string _updateUrl = "";
         private string _latestVersion = "";
         private readonly ComboBox _cmbLang;
@@ -304,34 +305,6 @@ namespace OpenDeskCastLauncher
                 Location = new Point(16, 13)
             };
             Controls.Add(lblTitle);
-
-            _btnUpdate = new Button
-            {
-                Text = "🚀 Update",
-                Font = new Font("Segoe UI Semibold", 8.2F, FontStyle.Bold),
-                Location = new Point(126, 12),
-                Size = new Size(86, 24),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(0, 120, 212),
-                ForeColor = Color.White,
-                TabStop = false,
-                Cursor = Cursors.Hand,
-                Visible = false
-            };
-            _btnUpdate.FlatAppearance.BorderColor = Color.FromArgb(76, 194, 255);
-            _btnUpdate.Click += (s, e) =>
-            {
-                ActiveControl = null;
-                try
-                {
-                    string target = !string.IsNullOrEmpty(_updateUrl)
-                        ? _updateUrl
-                        : "https://github.com/marco996/OpenDeskCast/releases/latest";
-                    Process.Start(target);
-                }
-                catch { }
-            };
-            Controls.Add(_btnUpdate);
 
             _btnHelp = new Button
             {
@@ -665,6 +638,46 @@ namespace OpenDeskCastLauncher
             _tglLock = new FluentToggle { Location = new Point(324, 244) };
             _tglLock.CheckedChanged += (s, e) => PushSettings();
             ctrlCard.Controls.Add(_tglLock);
+
+            // Bottom Right: Version Label & Conditional Update Button
+            _lblCurrentVersion = new Label
+            {
+                Text = "v1.0.2",
+                Font = new Font("Segoe UI", 8F, FontStyle.Regular),
+                ForeColor = Color.FromArgb(130, 130, 130),
+                Location = new Point(310, 308),
+                Size = new Size(60, 18),
+                TextAlign = ContentAlignment.MiddleRight
+            };
+            ctrlCard.Controls.Add(_lblCurrentVersion);
+
+            _btnUpdateIcon = new Button
+            {
+                Text = "📥 Update",
+                Font = new Font("Segoe UI Semibold", 7.8F, FontStyle.Bold),
+                Location = new Point(226, 305),
+                Size = new Size(80, 22),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(0, 120, 212),
+                ForeColor = Color.White,
+                TabStop = false,
+                Cursor = Cursors.Hand,
+                Visible = false
+            };
+            _btnUpdateIcon.FlatAppearance.BorderColor = Color.FromArgb(76, 194, 255);
+            _btnUpdateIcon.Click += (s, e) =>
+            {
+                ActiveControl = null;
+                try
+                {
+                    string target = !string.IsNullOrEmpty(_updateUrl)
+                        ? _updateUrl
+                        : "https://github.com/marco996/OpenDeskCast/releases/latest";
+                    Process.Start(target);
+                }
+                catch { }
+            };
+            ctrlCard.Controls.Add(_btnUpdateIcon);
 
             _pollTimer = new Timer { Interval = 1500 };
             _pollTimer.Tick += (s, e) => PollStatus(false);
@@ -1051,26 +1064,11 @@ namespace OpenDeskCastLauncher
         {
             _updateUrl = downloadUrl;
             _latestVersion = version;
-            if (_btnUpdate.Visible == available) return;
-            _btnUpdate.Visible = available;
+            if (_btnUpdateIcon.Visible == available) return;
+            _btnUpdateIcon.Visible = available;
             if (available)
             {
-                _btnUpdate.Text = "🚀 " + (!string.IsNullOrEmpty(version) ? "v" + version : "Update");
-                _btnHelp.Location = new Point(218, 12);
-                _btnHelp.Size = new Size(118, 24);
-                _cmbLang.Location = new Point(342, 12);
-                _cmbLang.Size = new Size(112, 24);
-                _lblBadge.Location = new Point(460, 12);
-                _lblBadge.Size = new Size(144, 24);
-            }
-            else
-            {
-                _btnHelp.Location = new Point(164, 12);
-                _btnHelp.Size = new Size(134, 24);
-                _cmbLang.Location = new Point(304, 12);
-                _cmbLang.Size = new Size(132, 24);
-                _lblBadge.Location = new Point(444, 12);
-                _lblBadge.Size = new Size(160, 24);
+                _btnUpdateIcon.Text = "📥 " + (!string.IsNullOrEmpty(version) ? "v" + version : "Update");
             }
         }
 
@@ -1097,6 +1095,12 @@ namespace OpenDeskCastLauncher
                             UpdateBadgeText(count);
                             RebuildAudioDeviceNames();
                         }
+                    }
+
+                    Match mAppVer = Regex.Match(json, "\"app_version\"\\s*:\\s*\"([^\"]+)\"");
+                    if (mAppVer.Success)
+                    {
+                        _lblCurrentVersion.Text = "v" + mAppVer.Groups[1].Value;
                     }
 
                     Match mUpdate = Regex.Match(json, "\"update_available\"\\s*:\\s*(true|false)", RegexOptions.IgnoreCase);
