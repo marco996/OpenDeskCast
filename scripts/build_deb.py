@@ -327,6 +327,10 @@ def build_deb() -> Path:
     deb_filename = f"opendeskcast_{version}_amd64.deb"
     out_deb = DIST_DIR / deb_filename
     linux_tar = DIST_DIR / f"OpenDeskCast-v{version}-linux-x64.tar.gz"
+    if not linux_tar.is_file():
+        candidates = sorted(DIST_DIR.glob("OpenDeskCast-v*-linux-x64.tar.gz"))
+        if candidates:
+            linux_tar = candidates[-1]
 
     print(f"=== [DEB] Creazione pacchetto nativo Debian/Ubuntu {deb_filename} ===")
 
