@@ -153,9 +153,37 @@ def generate_wxs(version: str, wxs_path: Path) -> None:
     wxs_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def sync_distribution_files(version: str) -> None:
+    v_content = f"{version}\n"
+    (ROOT / "VERSION").write_text(v_content, encoding="utf-8")
+
+    targets = [
+        ROOT / "engine" / "_internal" / "VERSION",
+        ROOT / "engine" / "VERSION",
+        SOURCE_DIR / "VERSION",
+        SOURCE_DIR / "engine" / "VERSION",
+        SOURCE_DIR / "engine" / "_internal" / "VERSION",
+        DIST_DIR / "OpenDeskCast-linux" / "VERSION",
+        DIST_DIR / "OpenDeskCast-linux" / "_internal" / "VERSION",
+        ROOT / "build" / "deb" / "package" / "opt" / "opendeskcast" / "VERSION",
+        ROOT / "build" / "deb" / "package" / "opt" / "opendeskcast" / "_internal" / "VERSION",
+    ]
+    for t in targets:
+        if t.parent.is_dir():
+            t.write_text(v_content, encoding="utf-8")
+
+    if (ROOT / "OpenDeskCast.exe").is_file():
+        shutil.copy2(ROOT / "OpenDeskCast.exe", SOURCE_DIR / "OpenDeskCast.exe")
+    if (ROOT / "static").is_dir():
+        shutil.copytree(ROOT / "static", SOURCE_DIR / "static", dirs_exist_ok=True)
+    if (ROOT / "drivers").is_dir():
+        shutil.copytree(ROOT / "drivers", SOURCE_DIR / "drivers", dirs_exist_ok=True)
+
+
 def build_msi() -> Path:
     wix = find_wix()
     version = read_version()
+    sync_distribution_files(version)
     wxs_file = BUILD_DIR / "OpenDeskCast.wxs"
     msi_output = DIST_DIR / f"OpenDeskCast-v{version}-windows-x64.msi"
 

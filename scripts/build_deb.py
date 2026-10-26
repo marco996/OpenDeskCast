@@ -280,7 +280,20 @@ Keywords=cast;screen;stream;mirror;desktop;
                 target_arcname = f"./opt/opendeskcast/{rel_name}"
 
                 is_updated_static = False
-                for sname in ("client.js", "index.html", "style.css"):
+                if rel_name == "VERSION" or rel_name.endswith("/VERSION"):
+                    v_bytes = f"{version}\n".encode("utf-8")
+                    new_ti = tarfile.TarInfo(target_arcname)
+                    new_ti.size = len(v_bytes)
+                    new_ti.mode = 0o644
+                    new_ti.mtime = int(time.time())
+                    new_ti.uid = 0
+                    new_ti.gid = 0
+                    new_ti.uname = "root"
+                    new_ti.gname = "root"
+                    dtar.addfile(new_ti, io.BytesIO(v_bytes))
+                    continue
+
+                for sname in ("client.js", "index.html", "style.css", "admin.html", "admin.js"):
                     if rel_name.endswith(f"static/{sname}"):
                         local_f = static_dir / sname
                         if local_f.exists():

@@ -47,11 +47,28 @@ def _resolve_static_dir() -> Path:
 
 
 def _resolve_version() -> str:
-    for base in (_resolve_base_dir(), Path(sys.executable).resolve().parent, Path(__file__).resolve().parent.parent):
-        for sub in ("", "_internal"):
-            vfile = (base / sub / "VERSION") if sub else (base / "VERSION")
-            if vfile.is_file():
-                return vfile.read_text(encoding="utf-8").strip() or "1.0.0"
+    candidates = [
+        # 1. Main app directory when engine is in engine/ subdirectory (e.g. C:\Program Files\OpenDeskCast\VERSION)
+        Path(sys.executable).resolve().parent.parent / "VERSION",
+        # 2. Main app directory when engine is in root directory
+        Path(sys.executable).resolve().parent / "VERSION",
+        # 3. Source repository root when running with python (run.py)
+        Path(__file__).resolve().parent.parent / "VERSION",
+        # 4. _resolve_base_dir parent
+        _resolve_base_dir().parent / "VERSION",
+        # 5. _resolve_base_dir itself (e.g. _internal/VERSION)
+        _resolve_base_dir() / "VERSION",
+        _resolve_base_dir() / "_internal" / "VERSION",
+        Path(sys.executable).resolve().parent / "_internal" / "VERSION",
+    ]
+    for cand in candidates:
+        try:
+            if cand.is_file():
+                txt = cand.read_text(encoding="utf-8").strip()
+                if txt:
+                    return txt
+        except Exception:
+            continue
     return "1.0.0"
 
 

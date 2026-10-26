@@ -185,6 +185,10 @@ def build() -> Path:
             shutil.copytree(ROOT / "drivers", pkg_root / "drivers", dirs_exist_ok=True)
         if (ROOT / "VERSION").is_file():
             shutil.copy2(ROOT / "VERSION", pkg_root / "VERSION")
+            if (pkg_root / "engine" / "_internal").is_dir():
+                shutil.copy2(ROOT / "VERSION", pkg_root / "engine" / "_internal" / "VERSION")
+            if (root_engine / "_internal").is_dir():
+                shutil.copy2(ROOT / "VERSION", root_engine / "_internal" / "VERSION")
         for doc_file in ("LICENSE", "README.md", "opendeskcast.ico"):
             src_doc = ROOT / doc_file
             if src_doc.is_file():
@@ -264,6 +268,10 @@ def build() -> Path:
         shutil.copytree(ROOT / "static", pkg_root / "static", dirs_exist_ok=True)
         if (ROOT / "VERSION").is_file():
             shutil.copy2(ROOT / "VERSION", pkg_root / "VERSION")
+            if (pkg_root / "engine" / "_internal").is_dir():
+                shutil.copy2(ROOT / "VERSION", pkg_root / "engine" / "_internal" / "VERSION")
+            if (root_engine / "_internal").is_dir():
+                shutil.copy2(ROOT / "VERSION", root_engine / "_internal" / "VERSION")
         for doc_file in ("LICENSE", "README.md", "opendeskcast.ico"):
             src_doc = ROOT / doc_file
             if src_doc.is_file():

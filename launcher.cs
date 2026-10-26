@@ -16,8 +16,8 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("OpenDeskCast — High-Performance Local Screen Casting Server")]
 [assembly: AssemblyProduct("OpenDeskCast")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 OpenDeskCast Contributors — MIT License")]
-[assembly: AssemblyVersion("1.0.2.0")]
-[assembly: AssemblyFileVersion("1.0.2.0")]
+[assembly: AssemblyVersion("1.0.3.0")]
+[assembly: AssemblyFileVersion("1.0.3.0")]
 
 namespace OpenDeskCastLauncher
 {
@@ -642,7 +642,7 @@ namespace OpenDeskCastLauncher
             // Bottom Right: Version Label & Conditional Update Button
             _lblCurrentVersion = new Label
             {
-                Text = "v1.0.2",
+                Text = "v" + GetLocalAppVersion(),
                 Font = new Font("Segoe UI", 8F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(130, 130, 130),
                 Location = new Point(310, 308),
@@ -1060,6 +1060,53 @@ namespace OpenDeskCastLauncher
             return cmb;
         }
 
+        private static string GetLocalAppVersion()
+        {
+            try
+            {
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string vFile = Path.Combine(baseDir, "VERSION");
+                if (File.Exists(vFile))
+                {
+                    string txt = File.ReadAllText(vFile).Trim();
+                    if (!string.IsNullOrEmpty(txt)) return txt;
+                }
+            }
+            catch { }
+            try
+            {
+                Version v = Assembly.GetExecutingAssembly().GetName().Version;
+                if (v != null) return string.Format("{0}.{1}.{2}", v.Major, v.Minor, v.Build);
+            }
+            catch { }
+            return "1.0.3";
+        }
+
+        private static int CompareVersions(string v1, string v2)
+        {
+            try
+            {
+                string clean1 = (v1 ?? "").Trim().TrimStart('v', 'V').Split('-', '+')[0];
+                string clean2 = (v2 ?? "").Trim().TrimStart('v', 'V').Split('-', '+')[0];
+                string[] p1 = clean1.Split('.');
+                string[] p2 = clean2.Split('.');
+                int len = Math.Max(p1.Length, p2.Length);
+                for (int i = 0; i < len; i++)
+                {
+                    int n1 = 0;
+                    if (i < p1.Length) int.TryParse(p1[i], out n1);
+                    int n2 = 0;
+                    if (i < p2.Length) int.TryParse(p2[i], out n2);
+                    if (n1 != n2) return n1.CompareTo(n2);
+                }
+                return 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
         private void SetUpdateAvailable(bool available, string version, string downloadUrl)
         {
             _updateUrl = downloadUrl;
@@ -1100,7 +1147,16 @@ namespace OpenDeskCastLauncher
                     Match mAppVer = Regex.Match(json, "\"app_version\"\\s*:\\s*\"([^\"]+)\"");
                     if (mAppVer.Success)
                     {
-                        _lblCurrentVersion.Text = "v" + mAppVer.Groups[1].Value;
+                        string srvVer = mAppVer.Groups[1].Value.Trim();
+                        string localVer = GetLocalAppVersion();
+                        if (!string.IsNullOrEmpty(srvVer) && CompareVersions(srvVer, localVer) >= 0)
+                        {
+                            _lblCurrentVersion.Text = "v" + srvVer;
+                        }
+                        else
+                        {
+                            _lblCurrentVersion.Text = "v" + localVer;
+                        }
                     }
 
                     Match mUpdate = Regex.Match(json, "\"update_available\"\\s*:\\s*(true|false)", RegexOptions.IgnoreCase);
@@ -1110,7 +1166,16 @@ namespace OpenDeskCastLauncher
                         Match mDown = Regex.Match(json, "\"download_url\"\\s*:\\s*\"([^\"]+)\"");
                         string ver = mVer.Success ? mVer.Groups[1].Value : "";
                         string down = mDown.Success ? mDown.Groups[1].Value : "";
-                        SetUpdateAvailable(true, ver, down);
+                        string localVer = GetLocalAppVersion();
+                        // Only show update button if latest remote version is strictly newer than local version
+                        if (!string.IsNullOrEmpty(ver) && CompareVersions(ver, localVer) > 0)
+                        {
+                            SetUpdateAvailable(true, ver, down);
+                        }
+                        else
+                        {
+                            SetUpdateAvailable(false, "", "");
+                        }
                     }
                     else
                     {
