@@ -207,6 +207,47 @@
     });
   }
 
+  const btnMacosPerm = document.getElementById("btn-macos-perm");
+  const macosPermModal = document.getElementById("macos-perm-modal");
+  const btnMacosClose = document.getElementById("btn-macos-close");
+  const btnMacosOpenSettings = document.getElementById("btn-macos-open-settings");
+  const btnMacosRestart = document.getElementById("btn-macos-restart");
+  let macosPromptShownOnce = false;
+
+  if (btnMacosPerm && macosPermModal) {
+    btnMacosPerm.addEventListener("click", () => {
+      macosPermModal.classList.remove("hidden");
+      btnMacosPerm.blur();
+    });
+  }
+  if (btnMacosClose && macosPermModal) {
+    btnMacosClose.addEventListener("click", () => {
+      macosPermModal.classList.add("hidden");
+    });
+    macosPermModal.addEventListener("click", (e) => {
+      if (e.target === macosPermModal) macosPermModal.classList.add("hidden");
+    });
+  }
+  if (btnMacosOpenSettings) {
+    btnMacosOpenSettings.addEventListener("click", async () => {
+      try {
+        await fetch("/api/macos/open-screen-permission", { method: "POST" });
+      } catch (_) {}
+    });
+  }
+  if (btnMacosRestart) {
+    btnMacosRestart.addEventListener("click", async () => {
+      btnMacosRestart.textContent = currentLang === "it" ? "Riavvio in corso..." : "Restarting...";
+      btnMacosRestart.disabled = true;
+      try {
+        await fetch("/api/macos/restart-app", { method: "POST" });
+      } catch (_) {}
+      setTimeout(() => {
+        window.location.reload();
+      }, 2200);
+    });
+  }
+
   selLang.addEventListener("change", () => {
     currentLang = selLang.value;
     localStorage.setItem("opendeskcast_lang", currentLang);
@@ -262,6 +303,18 @@
       chkAudio.checked = Boolean(data.settings.audio_enabled);
       chkLock.checked = Boolean(data.settings.lock_new_viewers);
       updateAudioSub();
+
+      // Guided macOS Screen Recording Permission check
+      if (data.os_platform === "darwin" && data.macos_screen_permission === false) {
+        if (btnMacosPerm) btnMacosPerm.classList.remove("hidden");
+        if (macosPermModal && !macosPromptShownOnce) {
+          macosPromptShownOnce = true;
+          macosPermModal.classList.remove("hidden");
+        }
+      } else {
+        if (btnMacosPerm) btnMacosPerm.classList.add("hidden");
+        if (macosPermModal) macosPermModal.classList.add("hidden");
+      }
 
       // Current Version in bottom right
       const curVerLabel = document.getElementById("app-current-version");

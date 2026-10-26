@@ -147,6 +147,7 @@ class TestReleaseArtifacts(unittest.TestCase):
             for zi in z.infolist():
                 self.assertEqual(zi.create_system, 3, f"Non-Unix create_system on {zi.filename}")
             for exec_entry in (
+                "Installa OpenDeskCast.command",
                 "OpenDeskCast.app/Contents/MacOS/OpenDeskCast",
                 "OpenDeskCast.app/Contents/Resources/bootstrap_macos.sh",
                 "OpenDeskCast.app/Contents/Resources/run_macos.sh",

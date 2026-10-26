@@ -19,7 +19,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from app.audio import AudioStreamer
-from app.capture import ScreenCapturer, enable_dpi_awareness, list_monitors
+from app.capture import (
+    ScreenCapturer,
+    enable_dpi_awareness,
+    ensure_macos_screen_capture_permission,
+    has_macos_screen_capture_permission,
+    list_monitors,
+)
 from app.qr_svg import generate_qr_matrix, generate_qr_svg
 from app.updater import check_for_updates
 
@@ -233,6 +239,8 @@ def api_status(request: Request, port: int = Query(default=DEFAULT_PORT)) -> dic
     viewers_count = len(active_viewers)
     return {
         "app_version": APP_VERSION,
+        "os_platform": sys.platform,
+        "macos_screen_permission": has_macos_screen_capture_permission(),
         "ips": ips,
         "port": port,
         "urls": urls,
@@ -245,6 +253,56 @@ def api_status(request: Request, port: int = Query(default=DEFAULT_PORT)) -> dic
         "connected_viewers": viewers_count,
         "update_info": check_for_updates(APP_VERSION),
     }
+
+
+@app.post("/api/macos/open-screen-permission")
+def api_macos_open_screen_permission(request: Request) -> dict[str, Any]:
+    _require_localhost(request)
+    granted = ensure_macos_screen_capture_permission()
+    if sys.platform == "darwin":
+        try:
+            import subprocess
+
+            subprocess.Popen(
+                ["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+    return {"ok": True, "granted": granted}
+
+
+@app.post("/api/macos/restart-app")
+def api_macos_restart_app(request: Request) -> dict[str, Any]:
+    _require_localhost(request)
+    if sys.platform == "darwin":
+        import subprocess
+        import threading
+
+        def _do_restart() -> None:
+            time.sleep(0.4)
+            bundle_candidate = Path(__file__).resolve().parents[3]
+            target_bundle = (
+                str(bundle_candidate)
+                if str(bundle_candidate).endswith(".app")
+                else "/Applications/OpenDeskCast.app"
+            )
+            try:
+                subprocess.Popen(
+                    ["/bin/sh", "-c", f"sleep 0.8 && open -n '{target_bundle}'"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+            except Exception:
+                pass
+            if shutdown_callback:
+                shutdown_callback()
+            else:
+                os._exit(0)
+
+        threading.Thread(target=_do_restart, daemon=True).start()
+    return {"ok": True}
 
 
 @app.get("/api/check-update")

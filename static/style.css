@@ -671,3 +671,70 @@ html, body {
     font-size: 16px;
   }
 }
+
+/* Guided macOS Screen Recording Permission Assistant */
+.fluent-warn-btn {
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid #f59e0b;
+  color: #fbbf24;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fluent-warn-btn:hover {
+  background: rgba(245, 158, 11, 0.3);
+}
+
+.macos-guide-card {
+  max-width: 440px;
+}
+
+.macos-guide-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.macos-step-btn {
+  width: 100%;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-align: center;
+}
+
+.macos-step-primary {
+  background: #0078d4;
+  color: #ffffff;
+}
+
+.macos-step-primary:hover {
+  background: #1084df;
+}
+
+.macos-step-success {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.macos-step-success:hover {
+  background: #15803d;
+}
+
+.macos-step-note {
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #f59e0b;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #e5e5e5;
+}
+

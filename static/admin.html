@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/x-icon" href="/static/icon.ico" />
   <title>OpenDeskCast</title>
-  <link rel="stylesheet" href="/static/style.css?v=9" />
+  <link rel="stylesheet" href="/static/style.css?v=10" />
 </head>
 <body class="fluent-body">
   <div class="fluent-shell">
@@ -16,6 +16,7 @@
         <span class="fluent-title">OpenDeskCast</span>
       </div>
       <div class="fluent-header-right">
+        <button id="btn-macos-perm" class="fluent-warn-btn hidden" type="button">⚠️ Permesso Schermo macOS</button>
         <button id="btn-help" class="fluent-help-btn" type="button">Setup dispositivo</button>
         <select id="sel-lang" class="fluent-lang-select" title="Lingua / Language"></select>
         <div class="fluent-pill" id="viewers-badge">0 spettatori collegati</div>
@@ -137,7 +138,7 @@
             <span class="update-icon">📥</span>
             <span id="update-target-ver">Update</span>
           </a>
-          <span id="app-current-version" class="app-version-label">v1.0.7</span>
+          <span id="app-current-version" class="app-version-label">v1.0.8</span>
         </div>
       </section>
     </main>
@@ -154,6 +155,30 @@
     </div>
   </div>
 
-  <script src="/static/admin.js?v=9"></script>
+  <!-- Configurazione Guidata Permesso Schermo macOS -->
+  <div id="macos-perm-modal" class="help-modal-backdrop hidden">
+    <div class="help-modal-card macos-guide-card">
+      <div class="help-modal-header">
+        <span class="help-modal-title" id="macos-guide-title">⚠️ Configurazione Guidata macOS</span>
+        <button id="btn-macos-close" class="help-modal-close" type="button">✕</button>
+      </div>
+      <div class="help-modal-body macos-guide-body">
+        <p id="macos-guide-desc">
+          Per trasmettere anche le <b>finestre aperte</b> (e non solo lo sfondo della scrivania), macOS richiede l'autorizzazione alla registrazione dello schermo:
+        </p>
+        <button id="btn-macos-open-settings" class="macos-step-btn macos-step-primary" type="button">
+          1. Apri Impostazioni "Registrazione Schermo"
+        </button>
+        <div class="macos-step-note" id="macos-guide-step2">
+          Nella finestra di macOS che si apre, attiva l'interruttore accanto a <b>OpenDeskCast</b>.
+        </div>
+        <button id="btn-macos-restart" class="macos-step-btn macos-step-success" type="button">
+          2. Ho attivato l'interruttore — Riavvia e Trasmetti
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/admin.js?v=10"></script>
 </body>
 </html>

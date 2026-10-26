@@ -52,6 +52,14 @@ def find_libpython() -> str:
     return ""
 
 
+def find_macho_python_executable() -> str:
+    """Locate the underlying Mach-O Python executable (for Macs without /usr/bin/cc)."""
+    base_exec = getattr(sys, "_base_executable", "") or sys.executable
+    if base_exec and Path(base_exec).is_file():
+        return str(Path(base_exec).resolve())
+    return str(Path(sys.executable).resolve())
+
+
 def write_runtime_config() -> int:
     app_support = Path.home() / "Library" / "Application Support" / "OpenDeskCast"
     app_support.mkdir(parents=True, exist_ok=True)
@@ -67,6 +75,7 @@ def write_runtime_config() -> int:
     python_path = ":".join(clean_paths)
     site_packages = next((p for p in clean_paths if "site-packages" in p), "")
     arch = platform.machine() or "arm64"
+    macho_exec = find_macho_python_executable()
 
     lines = [
         libpython,
@@ -74,6 +83,7 @@ def write_runtime_config() -> int:
         python_path,
         site_packages,
         arch,
+        macho_exec,
     ]
     cfg_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return 0

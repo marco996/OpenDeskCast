@@ -171,15 +171,19 @@ int main(int argc, char *argv[]) {
 
 
 BOOTSTRAP_MACOS_SH = r"""#!/usr/bin/env bash
-# OpenDeskCast — macOS Bootstrap & Native Mach-O Wrapper Builder
+# OpenDeskCast — macOS Self-Guided Bootstrap & Native Mach-O Wrapper Builder
 set -e
 
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 MACOS_DIR="$(cd "$APP_DIR/../MacOS" && pwd)"
 BUNDLE_DIR="$(cd "$APP_DIR/../.." && pwd)"
+APP_VERSION="$(cat "$APP_DIR/VERSION" 2>/dev/null | tr -d '\r\n' || echo "1.0.8")"
 cd "$APP_DIR"
 
 MODE="${1:-}"
+
+# 0. Rimuovi automaticamente eventuale attributo di quarantena Gatekeeper sul bundle
+/usr/bin/xattr -cr "$BUNDLE_DIR" >/dev/null 2>&1 || true
 
 # 1. Trova Python 3 su macOS (Homebrew, Framework o Command Line Tools)
 PYTHON_BIN=""
@@ -191,29 +195,69 @@ for candidate in \
     "$(command -v python3 2>/dev/null)" \
     "$(command -v python 2>/dev/null)"; do
     if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+        if [ "$candidate" = "/usr/bin/python3" ] && ! /usr/bin/xcode-select -p >/dev/null 2>&1; then
+            continue
+        fi
         PYTHON_BIN="$candidate"
         break
     fi
 done
 
 if [ -z "$PYTHON_BIN" ]; then
-    osascript -e 'display alert "OpenDeskCast" message "Python 3 non trovato. Installa Python da https://www.python.org o con brew install python." as critical'
+    CHOICE="$(osascript -e 'button returned of (display dialog "OpenDeskCast richiede gli strumenti Python di sistema per funzionare su macOS.\n\nVuoi avviarne l'\''installazione guidata adesso?" buttons {"Annulla", "Installa Ora"} default button "Installa Ora" with title "Installazione Guidata OpenDeskCast")' 2>/dev/null || echo "Annulla")"
+    if [ "$CHOICE" = "Installa Ora" ]; then
+        /usr/bin/xcode-select --install >/dev/null 2>&1 || open "https://www.python.org/downloads/macos/"
+    fi
     exit 1
 fi
 
 # 2. Configura ambiente virtuale isolato per OpenDeskCast in Library/Application Support
 SUPPORT_DIR="$HOME/Library/Application Support/OpenDeskCast"
 VENV_DIR="$SUPPORT_DIR/venv"
+INIT_MARKER="$SUPPORT_DIR/bundle_init_v${APP_VERSION}"
 mkdir -p "$SUPPORT_DIR"
 
 if [ ! -x "$VENV_DIR/bin/python" ]; then
+    osascript -e 'display notification "Configurazione automatica del primo avvio in corso (circa 15 secondi)..." with title "OpenDeskCast" subtitle "Attendere l'\''apertura automatica della regia"' >/dev/null 2>&1 || true
     "$PYTHON_BIN" -m venv "$VENV_DIR"
     "$VENV_DIR/bin/pip" install --upgrade pip --quiet
     "$VENV_DIR/bin/pip" install -r "$APP_DIR/requirements.txt" --quiet
 fi
 
-# 3. Genera runtime.cfg con il percorso esatto di libpython
+# 3. Genera runtime.cfg con il percorso esatto di libpython e dell'eseguibile Mach-O
 "$VENV_DIR/bin/python" "$APP_DIR/app/macos_setup.py"
+
+PY_LIB="$(sed -n '1p' "$SUPPORT_DIR/runtime.cfg" 2>/dev/null || true)"
+PY_HOME="$(sed -n '2p' "$SUPPORT_DIR/runtime.cfg" 2>/dev/null || true)"
+PY_PATH="$(sed -n '3p' "$SUPPORT_DIR/runtime.cfg" 2>/dev/null || true)"
+PY_SITE="$(sed -n '4p' "$SUPPORT_DIR/runtime.cfg" 2>/dev/null || true)"
+PY_ARCH="$(sed -n '5p' "$SUPPORT_DIR/runtime.cfg" 2>/dev/null || uname -m)"
+PY_MACHO="$(sed -n '6p' "$SUPPORT_DIR/runtime.cfg" 2>/dev/null || true)"
+
+# 4. Prepara il binario nativo Mach-O dentro Contents/MacOS e firma OpenDeskCast.app
+if [ -w "$MACOS_DIR" ]; then
+    BUILT_NATIVE=0
+    if /usr/bin/xcode-select -p >/dev/null 2>&1 && [ -x "/usr/bin/cc" ]; then
+        if /usr/bin/cc -O2 -arch "$PY_ARCH" \
+            -framework CoreGraphics -framework CoreFoundation -framework ApplicationServices \
+            "$APP_DIR/macos_launcher.c" -o "$MACOS_DIR/OpenDeskCast.bin" 2>/dev/null; then
+            mv -f "$MACOS_DIR/OpenDeskCast.bin" "$MACOS_DIR/OpenDeskCast"
+            chmod 755 "$MACOS_DIR/OpenDeskCast"
+            BUILT_NATIVE=1
+        fi
+    fi
+
+    if [ "$BUILT_NATIVE" = "0" ] && [ -n "$PY_MACHO" ] && [ -f "$PY_MACHO" ]; then
+        cp -f "$PY_MACHO" "$MACOS_DIR/OpenDeskCastBin"
+        chmod 755 "$MACOS_DIR/OpenDeskCastBin"
+    fi
+
+    if [ ! -f "$INIT_MARKER" ]; then
+        /usr/bin/codesign --force --deep --sign - "$BUNDLE_DIR" >/dev/null 2>&1 || true
+        /usr/bin/tccutil reset ScreenCapture com.opendeskcast.app >/dev/null 2>&1 || true
+        echo "$APP_VERSION" > "$INIT_MARKER"
+    fi
+fi
 
 if [ "$MODE" = "--setup-only" ]; then
     exit 0
@@ -221,25 +265,89 @@ fi
 
 if [ "$MODE" = "--run-fallback" ]; then
     shift
+    export PYTHONHOME="$PY_HOME"
+    export PYTHONPATH="$APP_DIR:$PY_PATH"
+    export OPENDESKCAST_SITE_PACKAGES="$PY_SITE"
+    export PYTHONUTF8="1"
+    unset __PYVENV_LAUNCHER__
+    if [ -x "$MACOS_DIR/OpenDeskCastBin" ]; then
+        exec "$MACOS_DIR/OpenDeskCastBin" "$APP_DIR/run.py" "$@"
+    fi
     exec "$VENV_DIR/bin/python" "$APP_DIR/run.py" "$@"
 fi
 
-# 4. Compila l'eseguibile nativo Mach-O per far riconoscere OpenDeskCast.app a macOS TCC (Registrazione Schermo)
-if /usr/bin/xcode-select -p >/dev/null 2>&1 && [ -x "/usr/bin/cc" ] && [ -w "$MACOS_DIR" ]; then
-    PY_ARCH="$(sed -n '5p' "$SUPPORT_DIR/runtime.cfg" 2>/dev/null || uname -m)"
-    if /usr/bin/cc -O2 -arch "$PY_ARCH" \
-        -framework CoreGraphics -framework CoreFoundation -framework ApplicationServices \
-        "$APP_DIR/macos_launcher.c" -o "$MACOS_DIR/OpenDeskCast.bin" 2>/dev/null; then
-        mv -f "$MACOS_DIR/OpenDeskCast.bin" "$MACOS_DIR/OpenDeskCast"
-        chmod 755 "$MACOS_DIR/OpenDeskCast"
-        /usr/bin/codesign --force --deep --sign - "$BUNDLE_DIR" >/dev/null 2>&1 || true
-        /usr/bin/tccutil reset ScreenCapture com.opendeskcast.app >/dev/null 2>&1 || true
-        exec "$MACOS_DIR/OpenDeskCast" "$@"
-    fi
+# 5. Se abbiamo compilato il Mach-O nativo OpenDeskCast, eseguilo direttamente in-process
+if file "$MACOS_DIR/OpenDeskCast" 2>/dev/null | grep -q "Mach-O"; then
+    exec "$MACOS_DIR/OpenDeskCast" "$@"
 fi
 
-# 5. Fallback diretto se il compilatore C non è presente
+# 6. Fallback Mach-O firmato dentro Contents/MacOS/OpenDeskCastBin (per Mac senza Xcode CLT)
+export PYTHONHOME="$PY_HOME"
+export PYTHONPATH="$APP_DIR:$PY_PATH"
+export OPENDESKCAST_SITE_PACKAGES="$PY_SITE"
+export PYTHONUTF8="1"
+unset __PYVENV_LAUNCHER__
+if [ -x "$MACOS_DIR/OpenDeskCastBin" ]; then
+    exec "$MACOS_DIR/OpenDeskCastBin" "$APP_DIR/run.py" "$@"
+fi
+
 exec "$VENV_DIR/bin/python" "$APP_DIR/run.py" "$@"
+"""
+
+
+INSTALLER_COMMAND_SH = r"""#!/usr/bin/env bash
+# OpenDeskCast — Installazione Guidata 1-Click per macOS
+set -e
+
+clear
+echo "================================================================"
+echo "  OpenDeskCast — Installazione e Configurazione Guidata macOS"
+echo "================================================================"
+echo ""
+
+SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
+SRC_APP="$SRC_DIR/OpenDeskCast.app"
+DEST_APP="/Applications/OpenDeskCast.app"
+
+if [ ! -d "$SRC_APP" ] && [ -d "$DEST_APP" ]; then
+    SRC_APP="$DEST_APP"
+fi
+
+if [ ! -d "$SRC_APP" ]; then
+    echo "Errore: OpenDeskCast.app non trovato nella cartella corrente."
+    read -r -p "Premi Invio per chiudere..."
+    exit 1
+fi
+
+echo "[1/4] Rimozione blocco Gatekeeper macOS (xattr -cr)..."
+/usr/bin/xattr -cr "$SRC_APP" 2>/dev/null || true
+
+echo "[2/4] Installazione di OpenDeskCast in /Applications..."
+if [ "$SRC_APP" != "$DEST_APP" ]; then
+    rm -rf "$DEST_APP" 2>/dev/null || true
+    cp -R "$SRC_APP" "$DEST_APP"
+fi
+/usr/bin/xattr -cr "$DEST_APP" 2>/dev/null || true
+chmod -R u+rwX "$DEST_APP" 2>/dev/null || true
+chmod 755 "$DEST_APP/Contents/MacOS/OpenDeskCast" 2>/dev/null || true
+chmod 755 "$DEST_APP/Contents/Resources/bootstrap_macos.sh" 2>/dev/null || true
+
+echo "[3/4] Configurazione ambiente e firma permessi Registrazione Schermo..."
+/bin/bash "$DEST_APP/Contents/Resources/bootstrap_macos.sh" --setup-only
+
+echo "[4/4] Avvio di OpenDeskCast..."
+/usr/bin/open -a "$DEST_APP"
+
+echo ""
+echo "================================================================"
+echo "  Installazione completata!"
+echo "  NOTA IMPORTANTE PER MACOS:"
+echo "  Quando si apre la finestra di regia, clicca sul pulsante"
+echo "  guidato per attivare 'OpenDeskCast' in:"
+echo "  Impostazioni di Sistema -> Privacy e sicurezza -> Registrazione schermo"
+echo "================================================================"
+sleep 2
+exit 0
 """
 
 
@@ -308,6 +416,14 @@ def create_macos_app_zip() -> Path:
             mode = 0o755 if is_exec else 0o644
             zi.external_attr = (stat.S_IFREG | mode) << 16
             zf.writestr(zi, data)
+
+        # 1-Click Guided macOS Installer script right next to OpenDeskCast.app
+        add_file(
+            "Installa OpenDeskCast.command",
+            INSTALLER_COMMAND_SH.encode("utf-8"),
+            is_exec=True,
+            normalize_lf=True,
+        )
 
         # Base directories
         add_dir("OpenDeskCast.app")
