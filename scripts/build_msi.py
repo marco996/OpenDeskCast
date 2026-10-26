@@ -130,14 +130,6 @@ def generate_wxs(version: str, wxs_path: Path) -> None:
         f'        <Shortcut Id="StartMenuShortcut" Name="OpenDeskCast" Target="[!{exe_file_id}]" WorkingDirectory="INSTALLFOLDER" Icon="AppIcon" IconIndex="0" />',
         '      </Component>',
         '    </StandardDirectory>',
-        '    <CustomAction Id="UninstallAudioDriver"',
-        '                  Directory="INSTALLFOLDER"',
-        '                  ExeCommand="cmd.exe /c &quot;&quot;[INSTALLFOLDER]drivers\\vbcable\\uninstall_driver.bat&quot;&quot;"',
-        '                  Execute="deferred"',
-        '                  Return="ignore" />',
-        '    <InstallExecuteSequence>',
-        '      <Custom Action="UninstallAudioDriver" Before="RemoveFiles" Condition="Installed AND (REMOVE=&quot;ALL&quot;) AND NOT UPGRADINGPRODUCTCODE" />',
-        '    </InstallExecuteSequence>',
         '    <Feature Id="MainFeature" Title="OpenDeskCast" Level="1">',
     ])
 
@@ -176,8 +168,9 @@ def sync_distribution_files(version: str) -> None:
         shutil.copy2(ROOT / "OpenDeskCast.exe", SOURCE_DIR / "OpenDeskCast.exe")
     if (ROOT / "static").is_dir():
         shutil.copytree(ROOT / "static", SOURCE_DIR / "static", dirs_exist_ok=True)
-    if (ROOT / "drivers").is_dir():
-        shutil.copytree(ROOT / "drivers", SOURCE_DIR / "drivers", dirs_exist_ok=True)
+    drivers_dir = SOURCE_DIR / "drivers"
+    if drivers_dir.is_dir():
+        shutil.rmtree(drivers_dir)
 
 
 def build_msi() -> Path:

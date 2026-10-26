@@ -2,7 +2,7 @@
 ; Creates a zero-elevation 1-click Windows Installer in %LocalAppData%\Programs\OpenDeskCast
 
 #define MyAppName "OpenDeskCast"
-#define MyAppVersion "1.0.3"
+#define MyAppVersion "1.0.4"
 #define MyAppPublisher "OpenDeskCast Contributors"
 #define MyAppURL "https://github.com/marco996/OpenDeskCast"
 #define MyAppExeName "OpenDeskCast.exe"
@@ -14,24 +14,24 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
-AppUpdatesURL={#MyAppURL}/releases
+AppUpdatesURL={#MyAppURL}
 DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-LicenseFile=LICENSE
 PrivilegesRequired=lowest
 OutputDir=dist
-OutputBaseFilename=OpenDeskCast-v{#MyAppVersion}-Setup
+OutputBaseFilename=OpenDeskCast-v{#MyAppVersion}-windows-x64-setup
 SetupIconFile=opendeskcast.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesInstallIn64BitMode=x64compatible
-UninstallDisplayIcon={app}\{#MyAppExeName}
+UninstallDisplayIcon={app}\opendeskcast.ico
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
-Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "it"; MessagesFile: "compiler:Languages\Italian.isl"
+Name: "en"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -46,5 +46,3 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-[UninstallRun]
-Filename: "{app}\drivers\vbcable\uninstall_driver.bat"; Flags: runhidden

@@ -16,8 +16,8 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("OpenDeskCast — High-Performance Local Screen Casting Server")]
 [assembly: AssemblyProduct("OpenDeskCast")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 OpenDeskCast Contributors — MIT License")]
-[assembly: AssemblyVersion("1.0.3.0")]
-[assembly: AssemblyFileVersion("1.0.3.0")]
+[assembly: AssemblyVersion("1.0.4.0")]
+[assembly: AssemblyFileVersion("1.0.4.0")]
 
 namespace OpenDeskCastLauncher
 {
@@ -48,7 +48,6 @@ namespace OpenDeskCastLauncher
         public string AudioDevTitle { get { return Code == "it" ? "Uscita Audio" : "Audio Output"; } }
         public string AudioDevSpeakers { get { return Code == "it" ? "Altoparlanti PC (Locale)" : "PC Speakers (Local)"; } }
         public string AudioDevReceiver { get { return Code == "it" ? "Dispositivo Ricevente (OpenDeskCast)" : "Receiving Device (OpenDeskCast)"; } }
-        public string InstallDriverBtn { get { return Code == "it" ? "Installa Driver Audio" : "Install Audio Driver"; } }
         public string AudioSubActive { get { return Code == "it" ? "Invia l'uscita audio selezionata allo spettatore" : "Transmit selected audio output to viewer"; } }
         public string AudioSubInactive { get { return Code == "it" ? "Audio disattivato (silenzioso)" : "Audio disabled (silent)"; } }
 
@@ -788,7 +787,7 @@ namespace OpenDeskCastLauncher
             using (Form dlg = new Form())
             {
                 dlg.Text = isIt ? "OpenDeskCast — Come collegare uno Spettatore" : "OpenDeskCast — Connection Guide";
-                dlg.ClientSize = new Size(520, 405);
+                dlg.ClientSize = new Size(520, 345);
                 dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dlg.MaximizeBox = false;
                 dlg.MinimizeBox = false;
@@ -880,48 +879,11 @@ namespace OpenDeskCastLauncher
                 box3.Controls.Add(b3);
                 dlg.Controls.Add(box3);
 
-                FluentCard box4 = new FluentCard { Location = new Point(16, 296), Size = new Size(488, 56) };
-                Label t4 = new Label
-                {
-                    Text = isIt ? "4. Uscita Audio Virtuale (OpenDeskCast)" : "4. Virtual Audio Output (OpenDeskCast)",
-                    Font = new Font("Segoe UI Semibold", 9.2F, FontStyle.Bold),
-                    ForeColor = Color.FromArgb(76, 194, 255),
-                    Location = new Point(12, 6),
-                    Size = new Size(330, 18)
-                };
-                Label b4 = new Label
-                {
-                    Text = isIt
-                        ? "Silenzia gli altoparlanti del PC senza mutare il volume master di sistema."
-                        : "Silences PC speakers without muting Windows master volume.",
-                    Font = new Font("Segoe UI", 8F),
-                    ForeColor = Color.FromArgb(215, 215, 215),
-                    Location = new Point(12, 26),
-                    Size = new Size(330, 24)
-                };
-                Button btnInstallDriver = new Button
-                {
-                    Text = isIt ? "Installa Driver" : "Install Driver",
-                    Font = new Font("Segoe UI Semibold", 8.5F, FontStyle.Bold),
-                    Location = new Point(348, 12),
-                    Size = new Size(128, 30),
-                    FlatStyle = FlatStyle.Flat,
-                    BackColor = Color.FromArgb(0, 120, 215),
-                    ForeColor = Color.White,
-                    Cursor = Cursors.Hand
-                };
-                btnInstallDriver.FlatAppearance.BorderSize = 0;
-                btnInstallDriver.Click += (s, e) => TryInstallVirtualAudioDriver();
-                box4.Controls.Add(t4);
-                box4.Controls.Add(b4);
-                box4.Controls.Add(btnInstallDriver);
-                dlg.Controls.Add(box4);
-
                 Button btnOk = new Button
                 {
                     Text = "OK",
                     Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold),
-                    Location = new Point(414, 362),
+                    Location = new Point(414, 302),
                     Size = new Size(90, 30),
                     FlatStyle = FlatStyle.Flat,
                     BackColor = Color.FromArgb(52, 52, 52),
@@ -933,84 +895,6 @@ namespace OpenDeskCastLauncher
                 dlg.Controls.Add(btnOk);
 
                 dlg.ShowDialog(this);
-            }
-        }
-
-        private static void MarkDriverInstalledByApp()
-        {
-            try
-            {
-                using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\OpenDeskCast"))
-                {
-                    if (key != null) key.SetValue("DriverInstalledByApp", 1, RegistryValueKind.DWord);
-                }
-            }
-            catch { }
-
-            try
-            {
-                string localApp = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                if (!string.IsNullOrEmpty(localApp))
-                {
-                    string markerDir = Path.Combine(localApp, "OpenDeskCast");
-                    Directory.CreateDirectory(markerDir);
-                    File.WriteAllText(Path.Combine(markerDir, ".driver_installed_by_app"), "1");
-                }
-            }
-            catch { }
-
-            try
-            {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string mfile = Path.Combine(baseDir, "drivers", "vbcable", ".installed_by_opendeskcast");
-                string pdir = Path.GetDirectoryName(mfile);
-                if (Directory.Exists(pdir))
-                {
-                    File.WriteAllText(mfile, "1");
-                }
-            }
-            catch { }
-        }
-
-        private void TryInstallVirtualAudioDriver()
-        {
-            try
-            {
-                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string exePath = Path.Combine(baseDir, "drivers", "vbcable", "VBCABLE_Setup_x64.exe");
-                if (File.Exists(exePath))
-                {
-                    MarkDriverInstalledByApp();
-                    ProcessStartInfo psi = new ProcessStartInfo
-                    {
-                        FileName = exePath,
-                        Arguments = "-i -h",
-                        Verb = "runas",
-                        UseShellExecute = true
-                    };
-                    Process.Start(psi);
-                    MessageBox.Show(
-                        CurrentLang().Code == "it"
-                            ? "Installazione avviata! Conferma la richiesta di Controllo Account Utente (UAC)."
-                            : "Installation started! Confirm the User Account Control (UAC) prompt.",
-                        "OpenDeskCast",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information
-                    );
-                }
-                else
-                {
-                    MessageBox.Show(
-                        "File driver non trovato in: " + exePath,
-                        "OpenDeskCast",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning
-                    );
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "OpenDeskCast", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1079,7 +963,7 @@ namespace OpenDeskCastLauncher
                 if (v != null) return string.Format("{0}.{1}.{2}", v.Major, v.Minor, v.Build);
             }
             catch { }
-            return "1.0.3";
+            return "1.0.4";
         }
 
         private static int CompareVersions(string v1, string v2)

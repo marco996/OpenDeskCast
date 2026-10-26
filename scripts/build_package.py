@@ -181,8 +181,6 @@ def build() -> Path:
         shutil.copytree(target_engine, root_engine)
 
         shutil.copytree(ROOT / "static", pkg_root / "static", dirs_exist_ok=True)
-        if (ROOT / "drivers").exists():
-            shutil.copytree(ROOT / "drivers", pkg_root / "drivers", dirs_exist_ok=True)
         if (ROOT / "VERSION").is_file():
             shutil.copy2(ROOT / "VERSION", pkg_root / "VERSION")
             if (pkg_root / "engine" / "_internal").is_dir():

@@ -316,14 +316,8 @@ class AudioDeviceManager:
         return results
 
     def find_cast_target_endpoint(self) -> tuple[str | None, str | None]:
-        """Find dedicated virtual cable or fallback silent endpoint."""
+        """Find dedicated digital/auxiliary output if present."""
         endpoints = self.get_windows_endpoints()
-        # 1. Look for virtual cable (VB-CABLE, Virtual Audio, OpenDeskCast, Steam Streaming)
-        for did, name in endpoints:
-            nl = name.lower()
-            if any(k in nl for k in ("cable input", "vb-audio", "virtual audio", "opendeskcast", "steam streaming")):
-                return did, name
-        # 2. Look for silent digital/auxiliary output
         for did, name in endpoints:
             nl = name.lower()
             if any(k in nl for k in ("digital output", "s/pdif", "optical")):
@@ -331,13 +325,6 @@ class AudioDeviceManager:
         return None, None
 
     def has_virtual_cable(self) -> bool:
-        if sys.platform != "win32":
-            return True  # Native null-sink on Linux
-        endpoints = self.get_windows_endpoints()
-        for _, name in endpoints:
-            nl = name.lower()
-            if any(k in nl for k in ("cable input", "vb-audio", "virtual audio", "opendeskcast", "steam streaming")):
-                return True
         return False
 
     def route_audio_to_cast(self) -> None:
@@ -849,58 +836,3 @@ class AudioStreamer:
                 yield chunk
         finally:
             self.remove_subscriber(q)
-
-
-def mark_driver_installed_by_app() -> None:
-    """Record that OpenDeskCast initiated the VB-CABLE driver installation."""
-    if sys.platform != "win32":
-        return
-    import os
-    from pathlib import Path
-    import winreg
-
-    try:
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\OpenDeskCast") as key:
-            winreg.SetValueEx(key, "DriverInstalledByApp", 0, winreg.REG_DWORD, 1)
-    except Exception:
-        pass
-
-    try:
-        local_app = os.environ.get("LOCALAPPDATA")
-        if local_app:
-            marker_dir = Path(local_app) / "OpenDeskCast"
-            marker_dir.mkdir(parents=True, exist_ok=True)
-            (marker_dir / ".driver_installed_by_app").write_text("1", encoding="utf-8")
-    except Exception:
-        pass
-
-    try:
-        base_dir = Path(__file__).resolve().parent.parent
-        mfile = base_dir / "drivers" / "vbcable" / ".installed_by_opendeskcast"
-        if mfile.parent.is_dir():
-            mfile.write_text("1", encoding="utf-8")
-    except Exception:
-        pass
-
-
-def launch_driver_installer() -> bool:
-    """Launch VB-CABLE driver setup with elevated privileges and mark for clean uninstall."""
-    if sys.platform != "win32":
-        return False
-    from pathlib import Path
-    base_dir = Path(__file__).resolve().parent.parent
-    exe_path = base_dir / "drivers" / "vbcable" / "VBCABLE_Setup_x64.exe"
-    if not exe_path.is_file():
-        return False
-    try:
-        mark_driver_installed_by_app()
-        cmd = [
-            "powershell",
-            "-NoProfile",
-            "-Command",
-            f"Start-Process -FilePath '{exe_path}' -ArgumentList '-i -h' -Verb RunAs",
-        ]
-        subprocess.Popen(cmd)
-        return True
-    except Exception:
-        return False
