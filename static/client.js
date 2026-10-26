@@ -5,6 +5,7 @@
   const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
   const pinOverlay = document.getElementById("pin-overlay");
   const pinBoxes = document.getElementById("pin-boxes");
+  const pinNativeInput = document.getElementById("pin-native-input");
   const digitEls = [
     document.getElementById("pin-d0"),
     document.getElementById("pin-d1"),
@@ -114,6 +115,18 @@
       digitEls[i].textContent = enteredPin[i] || "";
       digitEls[i].classList.toggle("filled", i < enteredPin.length);
     }
+    if (pinNativeInput && pinNativeInput.value !== enteredPin) {
+      pinNativeInput.value = enteredPin;
+    }
+  }
+
+  function requestWakeLockAndFullscreen() {
+    requestScreenWakeLock();
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } catch (_) {}
   }
 
   async function submitPin(pinCode) {
@@ -130,6 +143,11 @@
         if (data && data.token) {
           sessionToken = data.token;
           sessionTerminated = false;
+          if (pinNativeInput) {
+            try {
+              pinNativeInput.blur();
+            } catch (_) {}
+          }
           if (pinOverlay) pinOverlay.classList.add("hidden");
           requestWakeLockAndFullscreen();
           connectStream();
@@ -171,17 +189,61 @@
   }
 
   if (pinOverlay) {
+    let lastTouchBtnTime = 0;
     pinOverlay.querySelectorAll(".pin-btn").forEach((btn) => {
+      btn.addEventListener(
+        "touchstart",
+        (e) => {
+          e.stopPropagation();
+          ensureAudioUnlocked();
+        },
+        { passive: true }
+      );
+
+      btn.addEventListener(
+        "touchend",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          lastTouchBtnTime = Date.now();
+          const k = btn.getAttribute("data-k");
+          if (k) handlePinKey(k);
+        },
+        { passive: false }
+      );
+
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
+        if (Date.now() - lastTouchBtnTime < 450) return;
         const k = btn.getAttribute("data-k");
         if (k) handlePinKey(k);
       });
     });
+
+    if (pinBoxes && pinNativeInput) {
+      pinBoxes.addEventListener("click", (e) => {
+        e.stopPropagation();
+        ensureAudioUnlocked();
+        try {
+          pinNativeInput.focus();
+        } catch (_) {}
+      });
+
+      pinNativeInput.addEventListener("input", () => {
+        if (verifyingPin || sessionToken) return;
+        const clean = (pinNativeInput.value || "").replace(/[^0-9]/g, "").slice(0, 4);
+        enteredPin = clean;
+        renderPinDigits();
+        if (enteredPin.length === 4) {
+          submitPin(enteredPin);
+        }
+      });
+    }
   }
 
   window.addEventListener("keydown", (e) => {
     if (!pinOverlay || pinOverlay.classList.contains("hidden")) return;
+    if (document.activeElement === pinNativeInput) return;
     if (e.key >= "0" && e.key <= "9") {
       handlePinKey(e.key);
     } else if (e.key === "Backspace") {
@@ -270,9 +332,18 @@
   }
 
   let lastTapTime = 0;
-  function handleTapInteraction() {
+  let lastWindowTouchEnd = 0;
+  function handleTapInteraction(e) {
     ensureAudioUnlocked();
+    if (pinOverlay && !pinOverlay.classList.contains("hidden")) {
+      return;
+    }
     const now = Date.now();
+    if (e && e.type === "touchend") {
+      lastWindowTouchEnd = now;
+    } else if (e && e.type === "click" && now - lastWindowTouchEnd < 450) {
+      return;
+    }
     if (now - lastTapTime < 320) {
       toggleFullscreen();
       lastTapTime = 0;

@@ -135,7 +135,8 @@ Version: {version}
 Architecture: amd64
 Maintainer: Marco Scaglione <marcoscaglione96@gmail.com>
 Installed-Size: 105000
-Depends: pulseaudio-utils, libgl1
+Depends: pulseaudio-utils | pipewire-bin, libgl1
+Recommends: python3-gi, gir1.2-gst-plugins-base-1.0, gstreamer1.0-pipewire
 Section: net
 Priority: optional
 Homepage: https://github.com/marco996/OpenDeskCast
@@ -205,6 +206,7 @@ exit 0
         for dpath in (
             "./opt",
             "./opt/opendeskcast",
+            "./opt/opendeskcast/app",
             "./usr",
             "./usr/bin",
             "./usr/share",
@@ -224,7 +226,19 @@ exit 0
             dinfo.gname = "root"
             dtar.addfile(dinfo)
 
-        launcher = b'#!/bin/sh\nexec /opt/opendeskcast/OpenDeskCast "$@"\n'
+        launcher = (
+            b"#!/bin/sh\n"
+            b"if [ -f \"/opt/opendeskcast/run.py\" ] && [ -x \"/opt/opendeskcast/.venv/bin/python3\" ]; then\n"
+            b"    exec /opt/opendeskcast/.venv/bin/python3 /opt/opendeskcast/run.py \"$@\"\n"
+            b"elif [ -f \"/opt/opendeskcast/run.py\" ] && command -v python3 >/dev/null 2>&1 && python3 -c \"import fastapi, uvicorn, mss, cv2\" >/dev/null 2>&1; then\n"
+            b"    exec python3 /opt/opendeskcast/run.py \"$@\"\n"
+            b"elif [ \"${XDG_SESSION_TYPE:-}\" = \"wayland\" ] || [ -n \"${WAYLAND_DISPLAY:-}\" ]; then\n"
+            b"    if [ -x \"/opt/opendeskcast/run_linux.sh\" ] && command -v python3 >/dev/null 2>&1; then\n"
+            b"        exec /opt/opendeskcast/run_linux.sh \"$@\"\n"
+            b"    fi\n"
+            b"fi\n"
+            b"exec /opt/opendeskcast/OpenDeskCast \"$@\"\n"
+        )
         linfo = tarfile.TarInfo("./usr/bin/opendeskcast")
         linfo.size = len(launcher)
         linfo.mode = 0o755
@@ -234,6 +248,28 @@ exit 0
         linfo.uname = "root"
         linfo.gname = "root"
         dtar.addfile(linfo, io.BytesIO(launcher))
+
+        for extra_rel, extra_mode in (
+            ("run.py", 0o755),
+            ("run_linux.sh", 0o755),
+            ("requirements.txt", 0o644),
+            ("app/__init__.py", 0o644),
+            ("app/server.py", 0o644),
+            ("app/capture.py", 0o644),
+            ("app/audio.py", 0o644),
+        ):
+            src_f = ROOT / extra_rel
+            if src_f.is_file():
+                f_bytes = src_f.read_bytes().replace(b"\r\n", b"\n") if extra_rel.endswith(".sh") else src_f.read_bytes()
+                eti = tarfile.TarInfo(f"./opt/opendeskcast/{extra_rel}")
+                eti.size = len(f_bytes)
+                eti.mode = extra_mode
+                eti.mtime = int(time.time())
+                eti.uid = 0
+                eti.gid = 0
+                eti.uname = "root"
+                eti.gname = "root"
+                dtar.addfile(eti, io.BytesIO(f_bytes))
 
         desktop_bytes = """[Desktop Entry]
 Version=1.0

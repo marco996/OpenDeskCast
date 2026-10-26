@@ -711,16 +711,37 @@ class AudioStreamer:
             self._worker.start()
         elif sys.platform.startswith("linux"):
             parec = shutil.which("parec")
-            target_device = self.device_id if self.device_id != "default" else None
+            pw_record = shutil.which("pw-record")
+            pw_cat = shutil.which("pw-cat")
+            target_device = self.device_id if self.device_id not in ("default", "cast", "speakers") else None
+            if not target_device and self.device_manager._linux_module_id:
+                target_device = "OpenDeskCast"
+
             if parec:
+                monitor_src = f"{target_device}.monitor" if target_device else "@DEFAULT_MONITOR@"
                 cmd = [
                     parec,
+                    "-d",
+                    monitor_src,
                     "--format=s16le",
                     f"--rate={self.sample_rate}",
                     f"--channels={self.channels}",
                 ]
-                if target_device:
-                    cmd.extend(["-d", f"{target_device}.monitor"])
+                self._worker = _SubprocessAudioWorker(cmd, self._broadcast_chunk)
+                self._worker.start()
+            elif pw_record or pw_cat:
+                exe = pw_record or pw_cat
+                cmd = [exe]  # type: ignore[list-item]
+                if not pw_record:
+                    cmd.append("--record")
+                cmd.extend([
+                    "-P",
+                    "stream.capture.sink=true",
+                    "--format=s16",
+                    f"--rate={self.sample_rate}",
+                    f"--channels={self.channels}",
+                    "-",
+                ])
                 self._worker = _SubprocessAudioWorker(cmd, self._broadcast_chunk)
                 self._worker.start()
             elif self._ffmpeg:

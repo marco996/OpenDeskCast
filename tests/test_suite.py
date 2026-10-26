@@ -156,5 +156,24 @@ class TestNativeAudioSystem(unittest.TestCase):
         self.assertFalse(drivers_dir.exists(), "drivers directory should be completely removed")
 
 
+class TestMobilePinAndWayland(unittest.TestCase):
+    def test_mobile_pin_js_has_no_undefined_functions_and_supports_touch(self):
+        client_js = (ROOT / "static" / "client.js").read_text(encoding="utf-8")
+        self.assertIn("function requestWakeLockAndFullscreen()", client_js)
+        self.assertIn("touchend", client_js)
+        self.assertIn("pin-native-input", client_js)
+
+        style_css = (ROOT / "static" / "style.css").read_text(encoding="utf-8")
+        self.assertIn("@media (max-height: 480px)", style_css)
+        self.assertIn("touch-action: manipulation", style_css)
+
+    def test_wayland_portal_capturer_waiting_frame(self):
+        from app.capture import _WaylandPortalCapturer
+        wc = _WaylandPortalCapturer()
+        frame = wc._build_waiting_frame(1280, 720)
+        self.assertEqual(frame.shape, (720, 1280, 4))
+        self.assertGreater(int(frame[:, :, :3].max()), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

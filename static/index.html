@@ -9,7 +9,7 @@
   <link rel="icon" type="image/x-icon" href="/static/icon.ico" />
   <link rel="manifest" href="/static/manifest.json" />
   <title>OpenDeskCast</title>
-  <link rel="stylesheet" href="/static/style.css?v=17" />
+  <link rel="stylesheet" href="/static/style.css?v=18" />
 </head>
 <body class="viewer-body">
   <div id="viewer-container" class="viewer-container">
@@ -19,13 +19,16 @@
   <!-- 4-Digit PIN Numpad (only shown when opening opendeskcast.local without QR token) -->
   <div id="pin-overlay" class="pin-overlay hidden">
     <div class="pin-card">
-      <div class="pin-brand">OpenDeskCast</div>
-      <div class="pin-sub">PIN (4 cifre)</div>
-      <div id="pin-boxes" class="pin-boxes">
-        <div class="pin-digit" id="pin-d0"></div>
-        <div class="pin-digit" id="pin-d1"></div>
-        <div class="pin-digit" id="pin-d2"></div>
-        <div class="pin-digit" id="pin-d3"></div>
+      <div class="pin-header-group">
+        <div class="pin-brand">OpenDeskCast</div>
+        <div class="pin-sub">PIN (4 cifre)</div>
+        <div id="pin-boxes" class="pin-boxes" title="Tocca per inserire il PIN">
+          <div class="pin-digit" id="pin-d0"></div>
+          <div class="pin-digit" id="pin-d1"></div>
+          <div class="pin-digit" id="pin-d2"></div>
+          <div class="pin-digit" id="pin-d3"></div>
+        </div>
+        <input id="pin-native-input" class="pin-native-input" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="PIN" />
       </div>
       <div class="pin-pad">
         <button type="button" class="pin-btn" data-k="1">1</button>
@@ -44,6 +47,6 @@
     </div>
   </div>
 
-  <script src="/static/client.js?v=17"></script>
+  <script src="/static/client.js?v=18"></script>
 </body>
 </html>

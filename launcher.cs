@@ -16,8 +16,8 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("OpenDeskCast — High-Performance Local Screen Casting Server")]
 [assembly: AssemblyProduct("OpenDeskCast")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 OpenDeskCast Contributors — MIT License")]
-[assembly: AssemblyVersion("1.0.4.0")]
-[assembly: AssemblyFileVersion("1.0.4.0")]
+[assembly: AssemblyVersion("1.0.5.0")]
+[assembly: AssemblyFileVersion("1.0.5.0")]
 
 namespace OpenDeskCastLauncher
 {
@@ -963,7 +963,7 @@ namespace OpenDeskCastLauncher
                 if (v != null) return string.Format("{0}.{1}.{2}", v.Major, v.Minor, v.Build);
             }
             catch { }
-            return "1.0.4";
+            return "1.0.5";
         }
 
         private static int CompareVersions(string v1, string v2)
