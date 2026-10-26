@@ -10,6 +10,96 @@ import cv2
 import numpy as np
 
 IS_WIN32 = sys.platform == "win32"
+IS_MACOS = sys.platform == "darwin"
+
+_macos_tcc_granted: bool = False
+_macos_tcc_last_check: float = 0.0
+_macos_settings_opened: bool = False
+
+
+def has_macos_screen_capture_permission() -> bool:
+    """Return True if macOS TCC Screen Recording permission is granted (always True on non-macOS)."""
+    global _macos_tcc_granted, _macos_tcc_last_check
+    if not IS_MACOS:
+        return True
+    if _macos_tcc_granted:
+        return True
+    now = time.monotonic()
+    if (now - _macos_tcc_last_check) < 2.0 and _macos_tcc_last_check > 0.0:
+        return _macos_tcc_granted
+    _macos_tcc_last_check = now
+    try:
+        cg = ctypes.cdll.LoadLibrary("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+        cg.CGPreflightScreenCaptureAccess.restype = ctypes.c_bool
+        _macos_tcc_granted = bool(cg.CGPreflightScreenCaptureAccess())
+        return _macos_tcc_granted
+    except Exception:
+        return True
+
+
+def ensure_macos_screen_capture_permission() -> bool:
+    """Check and request macOS TCC Screen Recording permission if not yet granted."""
+    global _macos_tcc_granted, _macos_settings_opened
+    if not IS_MACOS:
+        return True
+    if has_macos_screen_capture_permission():
+        return True
+    try:
+        cg = ctypes.cdll.LoadLibrary("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+        cg.CGRequestScreenCaptureAccess.restype = ctypes.c_bool
+        _macos_tcc_granted = bool(cg.CGRequestScreenCaptureAccess())
+    except Exception:
+        pass
+    if not _macos_tcc_granted and not _macos_settings_opened:
+        _macos_settings_opened = True
+        try:
+            import subprocess
+
+            subprocess.Popen(
+                ["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+    return _macos_tcc_granted
+
+
+def _draw_macos_permission_overlay(bgra: np.ndarray) -> np.ndarray:
+    """Draw an explicit instructional overlay when macOS withholds application windows due to missing TCC Screen Recording permission."""
+    out = bgra.copy()
+    h, w = out.shape[:2]
+    box_w = min(w - 40, max(560, int(w * 0.72)))
+    box_h = min(h - 40, 210)
+    x0 = max(20, (w - box_w) // 2)
+    y0 = max(20, (h - box_h) // 2)
+    x1 = min(w - 20, x0 + box_w)
+    y1 = min(h - 20, y0 + box_h)
+
+    cv2.rectangle(out, (x0, y0), (x1, y1), (24, 24, 32, 255), thickness=-1)
+    cv2.rectangle(out, (x0, y0), (x1, y1), (0, 140, 255, 255), thickness=3)
+
+    lines = [
+        ("PERMESSO SCHERMO MACOS RICHIESTO", 0.78, (0, 180, 255, 255), 2),
+        ("macOS mostra solo lo sfondo finche' non autorizzi OpenDeskCast:", 0.56, (240, 240, 240, 255), 1),
+        ("1. Apri Impostazioni di Sistema -> Privacy e sicurezza -> Registrazione schermo", 0.52, (200, 225, 255, 255), 1),
+        ("2. Attiva l'interruttore 'OpenDeskCast' e premi 'Esci e riapri'", 0.52, (200, 225, 255, 255), 1),
+    ]
+    ty = y0 + 46
+    for text, scale, color, thick in lines:
+        cv2.putText(
+            out,
+            text,
+            (x0 + 24, ty),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            scale,
+            color,
+            thick,
+            cv2.LINE_AA,
+        )
+        ty += 42
+    return out
+
 
 
 def _wayland_enabled() -> bool:
@@ -299,8 +389,10 @@ class ScreenCapturer:
         self._dc_size: tuple[int, int] = (0, 0)
 
     def warmup(self) -> None:
-        """Pre-start Wayland ScreenCast session on Linux Wayland so the share dialog or restore token activates on launch."""
-        if _wayland_enabled():
+        """Pre-start Wayland ScreenCast session on Linux Wayland or verify TCC Screen Recording on macOS."""
+        if IS_MACOS:
+            ensure_macos_screen_capture_permission()
+        elif _wayland_enabled():
             from .wayland_capture import WaylandScreenCast
 
             WaylandScreenCast.get()._ensure_started()
@@ -362,14 +454,16 @@ class ScreenCapturer:
 
                 with mss.mss() as sct:
                     shot = sct.grab({"left": left, "top": top, "width": width, "height": height})
-                    return np.asarray(shot, dtype=np.uint8), mon
+                    bgra = np.asarray(shot, dtype=np.uint8)
             except Exception:
                 from PIL import ImageGrab
 
                 img = ImageGrab.grab(bbox=(left, top, left + width, top + height))
                 rgba = np.asarray(img.convert("RGBA"), dtype=np.uint8)
                 bgra = cv2.cvtColor(rgba, cv2.COLOR_RGBA2BGRA)
-                return bgra, mon
+            if IS_MACOS and not has_macos_screen_capture_permission():
+                bgra = _draw_macos_permission_overlay(bgra)
+            return bgra, mon
 
         hwnd_dc = user32.GetDC(0)
         if not hwnd_dc:

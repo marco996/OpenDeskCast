@@ -27,16 +27,16 @@ OpenDeskCast è un'applicazione open source multipiattaforma (Windows, Linux, ma
 ## Installazione ed Esecuzione
 
 ### Windows
-1. Scarica direttamente l'installer [**`OpenDeskCast-v1.0.6-windows-x64.msi`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.6/OpenDeskCast-v1.0.6-windows-x64.msi) (oppure consulta la pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases)).
+1. Scarica direttamente l'installer [**`OpenDeskCast-v1.0.7-windows-x64.msi`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.7/OpenDeskCast-v1.0.7-windows-x64.msi) (oppure consulta la pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases)).
 2. Avvia l'installer: crea automaticamente il collegamento nel Menu Start e sul Desktop.
 3. Fai doppio clic su **OpenDeskCast**: si apre la finestra di regia e viene visualizzato il QR Code per connettere gli spettatori.
 
 ### Linux (Ubuntu / Debian / Mint & Fedora / Wayland / Xorg)
 - **Ubuntu / Debian / Mint (`.deb`)**:
-  1. Scarica direttamente il pacchetto [**`opendeskcast_1.0.6_amd64.deb`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.6/opendeskcast_1.0.6_amd64.deb) (oppure consulta la pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases)).
+  1. Scarica direttamente il pacchetto [**`opendeskcast_1.0.7_amd64.deb`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.7/opendeskcast_1.0.7_amd64.deb) (oppure consulta la pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases)).
   2. Installa con un solo comando da terminale:
      ```bash
-     sudo apt install ./opendeskcast_1.0.6_amd64.deb
+     sudo apt install ./opendeskcast_1.0.7_amd64.deb
      ```
   3. Avvia **OpenDeskCast** dal menù delle applicazioni del tuo computer o digitando `opendeskcast` nel terminale.
 - **Fedora / RHEL / Arch (Wayland & Xorg)**:
@@ -44,10 +44,13 @@ OpenDeskCast è un'applicazione open source multipiattaforma (Windows, Linux, ma
   2. Supporta nativamente sia **Wayland** (tramite XDG Desktop Portal + PipeWire per schermo e audio; seleziona lo schermo e clicca *Condividi* alla richiesta di GNOME/KDE) sia **Xorg** (`gnome-xorg`).
 
 ### macOS
-1. Scarica direttamente il pacchetto [**`OpenDeskCast-v1.0.6-macos.zip`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.6/OpenDeskCast-v1.0.6-macos.zip) (oppure consulta la pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases)).
+1. Scarica direttamente il pacchetto [**`OpenDeskCast-v1.0.7-macos.zip`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.7/OpenDeskCast-v1.0.7-macos.zip) (oppure consulta la pagina delle [Release](https://github.com/marco996/OpenDeskCast/releases)).
 2. Estrai il file zip e trascina **OpenDeskCast.app** nella cartella **Applicazioni**.
-3. Avvia **OpenDeskCast** dal Launchpad o da Applicazioni.
-   *(Se compare l'avviso di sviluppatore non verificato, fai clic destro sull'app e scegli **Apri**, oppure esegui: `xattr -cr /Applications/OpenDeskCast.app`)*
+3. Rimuovi l'attributo di quarantena macOS (richiesto una sola volta per le app open-source non firmate con Apple Developer ID) e avvia **OpenDeskCast**:
+   ```bash
+   xattr -cr /Applications/OpenDeskCast.app
+   ```
+4. Al primo avvio, macOS richiederà il permesso di **Registrazione schermo e audio di sistema** (necessario per catturare le finestre aperte e non solo lo sfondo). Attiva l'interruttore **OpenDeskCast** in **Impostazioni di Sistema → Privacy e sicurezza → Registrazione schermo e audio di sistema** e premi **Esci e riapri**.
 
 *(In alternativa, per avvio rapido da sorgente su macOS: `./run_macos.sh`)*
 

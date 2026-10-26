@@ -2,7 +2,7 @@
 ; Creates a zero-elevation 1-click Windows Installer in %LocalAppData%\Programs\OpenDeskCast
 
 #define MyAppName "OpenDeskCast"
-#define MyAppVersion "1.0.6"
+#define MyAppVersion "1.0.7"
 #define MyAppPublisher "OpenDeskCast Contributors"
 #define MyAppURL "https://github.com/marco996/OpenDeskCast"
 #define MyAppExeName "OpenDeskCast.exe"

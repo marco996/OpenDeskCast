@@ -16,8 +16,8 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("OpenDeskCast — High-Performance Local Screen Casting Server")]
 [assembly: AssemblyProduct("OpenDeskCast")]
 [assembly: AssemblyCopyright("Copyright (c) 2026 OpenDeskCast Contributors — MIT License")]
-[assembly: AssemblyVersion("1.0.6.0")]
-[assembly: AssemblyFileVersion("1.0.6.0")]
+[assembly: AssemblyVersion("1.0.7.0")]
+[assembly: AssemblyFileVersion("1.0.7.0")]
 
 namespace OpenDeskCastLauncher
 {

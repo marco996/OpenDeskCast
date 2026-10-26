@@ -16,10 +16,17 @@ if sys.stdout is None:
 if sys.stderr is None:
     sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
+if os.environ.get("OPENDESKCAST_SITE_PACKAGES"):
+    import site
+
+    for _sp in os.environ["OPENDESKCAST_SITE_PACKAGES"].split(os.pathsep):
+        if _sp and os.path.isdir(_sp):
+            site.addsitedir(_sp)
+
 import uvicorn
 
 from app import server as srv
-from app.capture import enable_dpi_awareness, list_monitors
+from app.capture import enable_dpi_awareness, ensure_macos_screen_capture_permission, list_monitors
 
 
 def _clean_subprocess_env() -> dict[str, str]:
@@ -141,6 +148,7 @@ def _open_pc_control_window(port: int) -> None:
 
 def main() -> None:
     enable_dpi_awareness()
+    ensure_macos_screen_capture_permission()
 
     parser = argparse.ArgumentParser(description="OpenDeskCast — PC Host & Passive HDMI-Style Viewer")
     parser.add_argument("--host", default="0.0.0.0", help="Indirizzo di bind (default: 0.0.0.0)")

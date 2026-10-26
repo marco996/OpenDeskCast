@@ -144,6 +144,20 @@ class TestReleaseArtifacts(unittest.TestCase):
             names = z.namelist()
             self.assertTrue(any("OpenDeskCast.app" in n for n in names))
             self.assertTrue(any("Info.plist" in n for n in names))
+            for zi in z.infolist():
+                self.assertEqual(zi.create_system, 3, f"Non-Unix create_system on {zi.filename}")
+            for exec_entry in (
+                "OpenDeskCast.app/Contents/MacOS/OpenDeskCast",
+                "OpenDeskCast.app/Contents/Resources/bootstrap_macos.sh",
+                "OpenDeskCast.app/Contents/Resources/run_macos.sh",
+            ):
+                zi = z.getinfo(exec_entry)
+                mode = (zi.external_attr >> 16) & 0o777
+                self.assertEqual(mode, 0o755, f"Expected 0755 on {exec_entry}, got {oct(mode)}")
+                self.assertNotIn(b"\r\n", z.read(exec_entry))
+            launcher_c = z.read("OpenDeskCast.app/Contents/Resources/macos_launcher.c").decode("utf-8")
+            self.assertIn("CGRequestScreenCaptureAccess", launcher_c)
+            self.assertIn("Py_BytesMain", launcher_c)
 
 
 class TestNativeAudioSystem(unittest.TestCase):
