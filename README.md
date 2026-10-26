@@ -27,16 +27,16 @@ OpenDeskCast is an open-source, cross-platform desktop application (Windows, Lin
 ## Installation & Usage
 
 ### Windows
-1. Download the [**`OpenDeskCast-v1.0.5-windows-x64.msi`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.5/OpenDeskCast-v1.0.5-windows-x64.msi) installer directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
+1. Download the [**`OpenDeskCast-v1.0.6-windows-x64.msi`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.6/OpenDeskCast-v1.0.6-windows-x64.msi) installer directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
 2. Run the installer: automatically creates Start Menu and Desktop shortcuts.
 3. Double-click **OpenDeskCast**: the control panel opens, showing the QR Code for viewers to connect.
 
 ### Linux (Ubuntu / Debian / Mint & Fedora / Wayland / Xorg)
 - **Ubuntu / Debian / Mint (`.deb`)**:
-  1. Download the [**`opendeskcast_1.0.5_amd64.deb`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.5/opendeskcast_1.0.5_amd64.deb) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
+  1. Download the [**`opendeskcast_1.0.6_amd64.deb`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.6/opendeskcast_1.0.6_amd64.deb) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
   2. Install via terminal with a single command:
      ```bash
-     sudo apt install ./opendeskcast_1.0.5_amd64.deb
+     sudo apt install ./opendeskcast_1.0.6_amd64.deb
      ```
   3. Launch **OpenDeskCast** from your application menu or by running `opendeskcast` in the terminal.
 - **Fedora / RHEL / Arch (Wayland & Xorg)**:
@@ -44,7 +44,7 @@ OpenDeskCast is an open-source, cross-platform desktop application (Windows, Lin
   2. Both **Wayland** (native XDG Desktop Portal + PipeWire screen & audio capture; select the screen and click *Share* when prompted by GNOME/KDE) and **Xorg** (`gnome-xorg`) are supported out of the box.
 
 ### macOS
-1. Download the [**`OpenDeskCast-v1.0.5-macos.zip`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.5/OpenDeskCast-v1.0.5-macos.zip) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
+1. Download the [**`OpenDeskCast-v1.0.6-macos.zip`**](https://github.com/marco996/OpenDeskCast/releases/download/v1.0.6/OpenDeskCast-v1.0.6-macos.zip) package directly (or visit the [Releases](https://github.com/marco996/OpenDeskCast/releases) page).
 2. Extract the zip file and drag **OpenDeskCast.app** into your **Applications** folder.
 3. Launch **OpenDeskCast** from Launchpad or Applications.
    *(If macOS blocks opening unverified apps, right-click the app and choose **Open**, or run: `xattr -cr /Applications/OpenDeskCast.app`)*

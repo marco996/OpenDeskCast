@@ -167,12 +167,13 @@ class TestMobilePinAndWayland(unittest.TestCase):
         self.assertIn("@media (max-height: 480px)", style_css)
         self.assertIn("touch-action: manipulation", style_css)
 
-    def test_wayland_portal_capturer_waiting_frame(self):
-        from app.capture import _WaylandPortalCapturer
-        wc = _WaylandPortalCapturer()
-        frame = wc._build_waiting_frame(1280, 720)
-        self.assertEqual(frame.shape, (720, 1280, 4))
-        self.assertGreater(int(frame[:, :, :3].max()), 0)
+    def test_wayland_portal_capturer_module(self):
+        from app.wayland_capture import WaylandScreenCast, is_wayland, PortalError
+        from app.capture import _wayland_enabled
+        self.assertIsInstance(is_wayland(), bool)
+        self.assertIsInstance(_wayland_enabled(), bool)
+        wsc = WaylandScreenCast.get()
+        self.assertIs(wsc, WaylandScreenCast.get())
 
 
 if __name__ == "__main__":

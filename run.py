@@ -160,10 +160,6 @@ def main() -> None:
 
     ips = srv.get_local_ipv4_addresses()
     monitors = list_monitors()
-    try:
-        srv.capturer.warmup()
-    except Exception:
-        pass
 
     print("=" * 68)
     print("  OpenDeskCast — Regia PC & Trasmissione Sicura verso Spettatori")

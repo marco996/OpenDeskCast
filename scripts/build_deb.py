@@ -256,6 +256,7 @@ exit 0
             ("app/__init__.py", 0o644),
             ("app/server.py", 0o644),
             ("app/capture.py", 0o644),
+            ("app/wayland_capture.py", 0o644),
             ("app/audio.py", 0o644),
         ):
             src_f = ROOT / extra_rel
